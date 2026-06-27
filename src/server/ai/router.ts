@@ -1,17 +1,19 @@
-import type { Employee } from "@/modules/employees/types";
+import type { Employee, EmployeeRole } from "@/modules/employees/types";
 import type { AIProvider, ChatMessage } from "./provider";
 import { GeminiProvider } from "./gemini";
+import { PromptBuilder  } from "./promptBuilder";
 
 /**
- * AIRouter — the single entry point for all AI chat requests.
+ * AIRouter — single entry point for all AI chat requests.
  *
  * Responsibilities:
  *   1. Resolve the active provider from environment config (AI_PROVIDER)
- *   2. Translate Employee-specific config into a normalised ChatOptions struct
- *   3. Delegate to the provider
+ *   2. Delegate prompt assembly to PromptBuilder
+ *   3. Forward the BuiltPrompt to the provider
  *
- * The Route Handler owns: auth, request parsing, employee lookup, HTTP response.
- * This class owns: everything AI-specific.
+ * The Route Handler owns: auth, parsing, employee lookup, HTTP response.
+ * PromptBuilder owns: all prompt content decisions.
+ * This class owns: provider selection and orchestration.
  *
  * Adding a new provider (e.g. OpenAI):
  *   1. Create OpenAIProvider implementing AIProvider in openai.ts
@@ -20,25 +22,22 @@ import { GeminiProvider } from "./gemini";
  *   — No other file changes required.
  */
 export class AIRouter {
-  private readonly provider:     AIProvider;
-  private readonly systemPrompt: string;
-  private readonly temperature:  number;
+  private readonly provider:       AIProvider;
+  private readonly promptBuilder:  PromptBuilder;
+  private readonly temperature:    number;
+  private readonly employeeName:   string;
+  private readonly employeeRole:   EmployeeRole;
+  private readonly systemInstructions: string;
 
   constructor(employee: Employee) {
-    this.provider    = AIRouter.resolveProvider();
-    this.temperature = employee.config.temperature;
-    this.systemPrompt =
-      employee.config.systemInstructions.trim() ||
-      `You are ${employee.name}, an AI ${employee.role} specialist. ` +
-      `Be helpful, professional, and focused on ${employee.role} tasks. ` +
-      `Keep responses concise and actionable.`;
+    this.provider            = AIRouter.resolveProvider();
+    this.promptBuilder       = new PromptBuilder();
+    this.temperature         = employee.config.temperature;
+    this.employeeName        = employee.name;
+    this.employeeRole        = employee.role;
+    this.systemInstructions  = employee.config.systemInstructions;
   }
 
-  /**
-   * Instantiate the correct provider based on AI_PROVIDER env var.
-   * Throws immediately if required credentials are missing — fast fail
-   * before any network call is attempted.
-   */
   private static resolveProvider(): AIProvider {
     const providerName = process.env.AI_PROVIDER ?? "gemini";
 
@@ -51,34 +50,37 @@ export class AIRouter {
             "Get one at: https://aistudio.google.com/apikey"
           );
         }
-        const modelName = process.env.GEMINI_MODEL ?? "gemini-2.5-flash";
-        return new GeminiProvider(apiKey, modelName);
+        return new GeminiProvider(apiKey, process.env.GEMINI_MODEL ?? "gemini-2.5-flash");
       }
 
       default:
         throw new Error(
-          `Unknown AI provider: "${providerName}". ` +
-          `Set AI_PROVIDER to one of: gemini`
+          `Unknown AI provider: "${providerName}". Set AI_PROVIDER to one of: gemini`
         );
     }
   }
 
   /**
-   * Stream a chat response for the given conversation.
+   * Stream a chat response.
    *
-   * @param history  All prior turns (oldest first), excluding the current message
+   * @param history  Prior turns (oldest first), excluding the current message
    * @param message  The current user message
-   * @returns ReadableStream<Uint8Array> ready to be passed to `new Response(stream)`
    */
   async chat(
     history: ChatMessage[],
     message: string
   ): Promise<ReadableStream<Uint8Array>> {
-    return this.provider.chatStream({
-      systemPrompt: this.systemPrompt,
-      temperature:  this.temperature,
+    const prompt = this.promptBuilder.build({
+      systemInstructions: this.systemInstructions,
+      role:               this.employeeRole,
+      name:               this.employeeName,
       history,
       message,
+    });
+
+    return this.provider.chatStream({
+      prompt,
+      temperature: this.temperature,
     });
   }
 }

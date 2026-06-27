@@ -6,7 +6,7 @@
  *   2. Add a case in AIRouter.resolveProvider()
  *   3. Add the required env vars
  *
- * The Route Handler and AIRouter never change.
+ * The Route Handler and AIRouter.chat() signature never change.
  */
 
 export interface ChatMessage {
@@ -14,15 +14,24 @@ export interface ChatMessage {
   content: string;
 }
 
+/**
+ * The assembled prompt produced by PromptBuilder.
+ * Re-exported here so providers import from one place.
+ */
+export type { BuiltPrompt } from "./promptBuilder";
+
+/**
+ * Options passed to every provider's chatStream method.
+ *
+ * `prompt` is the fully-assembled BuiltPrompt from PromptBuilder —
+ * providers must not add or modify prompt content; they only configure
+ * generation parameters (temperature, maxOutputTokens).
+ */
 export interface ChatOptions {
-  /** Fully-resolved system prompt (already merged with employee defaults) */
-  systemPrompt:     string;
+  /** Fully assembled prompt — produced by PromptBuilder, not by the provider */
+  prompt:           import("./promptBuilder").BuiltPrompt;
   /** 0.0 (precise) – 1.0 (creative) — sourced from EmployeeConfig */
   temperature:      number;
-  /** Conversation turns BEFORE the current message — oldest first */
-  history:          ChatMessage[];
-  /** The current user message to respond to */
-  message:          string;
   /** Provider-level output cap (default chosen by each provider) */
   maxOutputTokens?: number;
 }
@@ -35,7 +44,6 @@ export interface AIProvider {
    * Stream a chat completion.
    *
    * Returns a ReadableStream of UTF-8 encoded text chunks.
-   * The stream is fully compatible with `new Response(stream)`.
    * Throws if the provider is misconfigured or the upstream API fails.
    */
   chatStream(options: ChatOptions): Promise<ReadableStream<Uint8Array>>;

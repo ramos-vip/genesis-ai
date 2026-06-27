@@ -4,8 +4,9 @@ import type { AIProvider, ChatOptions } from "./provider";
 /**
  * Gemini provider — wraps @google/generative-ai.
  *
- * Constructed by AIRouter.resolveProvider(); never instantiated directly
- * outside the ai/ package.
+ * Receives a fully assembled BuiltPrompt via ChatOptions.
+ * All prompt construction happens in PromptBuilder — this class only
+ * maps the BuiltPrompt to Gemini's native API format.
  */
 export class GeminiProvider implements AIProvider {
   readonly name = "gemini" as const;
@@ -16,17 +17,16 @@ export class GeminiProvider implements AIProvider {
   ) {}
 
   async chatStream({
-    systemPrompt,
+    prompt,
     temperature,
-    history,
-    message,
     maxOutputTokens = 8192,
   }: ChatOptions): Promise<ReadableStream<Uint8Array>> {
-    const genAI = new GoogleGenerativeAI(this.apiKey);
+    const { systemInstruction, history, message } = prompt;
 
-    const model = genAI.getGenerativeModel({
+    const genAI  = new GoogleGenerativeAI(this.apiKey);
+    const model  = genAI.getGenerativeModel({
       model:             this.modelName,
-      systemInstruction: systemPrompt,
+      systemInstruction,
     });
 
     const chat = model.startChat({
