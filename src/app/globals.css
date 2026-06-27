@@ -156,6 +156,31 @@ body {
   outline-offset: 2px;
 }
 
+/* ─── Landing hero animations ───────────────────────────────────────────── */
+
+@keyframes hero-float {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-8px); }
+}
+@keyframes badge-float {
+  0%, 100% { transform: translateY(0px) rotate(-3deg); }
+  50%       { transform: translateY(-6px) rotate(-3deg); }
+}
+@keyframes glow-drift {
+  0%, 100% { transform: scale(1) translate(0, 0);      opacity: 0.12; }
+  40%       { transform: scale(1.12) translate(16px, -20px); opacity: 0.18; }
+  70%       { transform: scale(0.95) translate(-8px, 12px);  opacity: 0.10; }
+}
+@keyframes preview-appear {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.hero-float          { animation: hero-float  4s ease-in-out infinite; }
+.hero-badge-float    { animation: badge-float 3.5s ease-in-out infinite; }
+.hero-glow-drift     { animation: glow-drift  8s ease-in-out infinite; }
+.hero-preview-appear { animation: preview-appear 0.8s cubic-bezier(0.16,1,0.3,1) 0.3s both; }
+
 /* ─── Range slider (Slider component) ───────────────────────────────────── */
 
 input[type="range"] {
