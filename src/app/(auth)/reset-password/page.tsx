@@ -1,22 +1,43 @@
-/**
- * Password reset is handled by Clerk's SignIn component.
- * The "Forgot password?" link inside SignIn navigates to the reset flow.
- * This page serves as a direct entry point for reset-password deep links
- * from Clerk emails (Clerk appends its own token parameters).
- */
 import type { Metadata } from "next";
 import { SignIn } from "@clerk/nextjs";
 import { clerkAppearance } from "@/shared/lib";
+import { ROUTES } from "@/shared/constants";
+import AuthSplitLayout from "../_components/AuthSplitLayout";
 
-export const metadata: Metadata = { title: "Reset password" };
+export const metadata: Metadata = { title: "Reset password — Project Genesis" };
+
+const features = [
+  { text: "Secure password reset via verified email" },
+  { text: "Your AI employees keep running while you reset" },
+  { text: "Enterprise-grade account security" },
+];
 
 export default function ResetPasswordPage() {
   return (
-    <div className="rounded-2xl border border-border bg-surface p-8">
+    <AuthSplitLayout
+      title="Reset password"
+      heading="Reset your password"
+      subheading="Enter your email and we'll send you a secure reset link."
+      headline={
+        <>
+          Back in a{" "}
+          <span className="bg-gradient-to-r from-violet-300 to-indigo-300 bg-clip-text text-transparent">
+            moment.
+          </span>
+        </>
+      }
+      description="Forgot your password? No worries. Your AI workforce stays active while you get back in."
+      features={features}
+      switchHref={ROUTES.AUTH.LOGIN}
+      switchPrompt="Remember your password?"
+      switchLabel="Back to sign in →"
+    >
       <SignIn
         appearance={clerkAppearance}
         routing="hash"
+        signUpUrl={ROUTES.AUTH.SIGNUP}
+        fallbackRedirectUrl={ROUTES.APP.DASHBOARD}
       />
-    </div>
+    </AuthSplitLayout>
   );
 }
