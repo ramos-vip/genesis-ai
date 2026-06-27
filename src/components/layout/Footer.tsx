@@ -8,14 +8,16 @@ const columns = [
       { label: "About",    href: ROUTES.HOME },
       { label: "Careers",  href: ROUTES.HOME },
       { label: "Contact",  href: ROUTES.AUTH.SIGNUP },
+      { label: "Press",    href: ROUTES.HOME },
     ],
   },
   {
-    label: "Product",
+    label: "Platform",
     links: [
-      { label: "Platform", href: ROUTES.HOME + "#features" },
-      { label: "Pricing",  href: ROUTES.HOME + "#pricing" },
-      { label: "Security", href: ROUTES.HOME },
+      { label: "AI Employees",   href: "/#solutions" },
+      { label: "Knowledge Base", href: "/#platform"  },
+      { label: "Analytics",      href: "/#platform"  },
+      { label: "Pricing",        href: ROUTES.PRICING },
     ],
   },
   {
@@ -24,13 +26,25 @@ const columns = [
       { label: "Documentation", href: ROUTES.HOME, soon: true },
       { label: "API Reference",  href: ROUTES.HOME, soon: true },
       { label: "Blog",           href: ROUTES.HOME, soon: true },
+      { label: "Community",      href: ROUTES.HOME, soon: true },
+    ],
+  },
+  {
+    label: "Enterprise",
+    links: [
+      { label: "Security",     href: ROUTES.HOME },
+      { label: "Compliance",   href: ROUTES.HOME },
+      { label: "Contact Sales",href: ROUTES.AUTH.SIGNUP },
+      { label: "SLA",          href: ROUTES.HOME, soon: true },
     ],
   },
   {
     label: "Legal",
     links: [
-      { label: "Privacy", href: ROUTES.HOME },
-      { label: "Terms",   href: ROUTES.HOME },
+      { label: "Privacy Policy", href: ROUTES.HOME },
+      { label: "Terms of Service", href: ROUTES.HOME },
+      { label: "Cookie Policy",  href: ROUTES.HOME },
+      { label: "GDPR",           href: ROUTES.HOME },
     ],
   },
 ];
@@ -50,7 +64,7 @@ const socials = [
     href:  "https://x.com",
     icon:  (
       <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4" aria-hidden>
-        <path d="M11.571 9.107L18.5 1h-1.653l-6.01 6.985L6.012 1H1l7.26 10.572L1 19.25h1.653l6.35-7.378 5.073 7.378H19L11.571 9.107zm-2.249 2.613l-.736-1.053L3.316 2.27h2.521l4.726 6.764.736 1.053 6.146 8.79H14.92l-5.597-8.158z"/>
+        <path d="M11.571 9.107L18.5 1h-1.653l-6.01 6.985L6.012 1H1l7.26 10.572L1 19.25h1.653l6.35-7.378 5.073 7.378H19L11.571 9.107z"/>
       </svg>
     ),
   },
@@ -68,25 +82,26 @@ const socials = [
 export default function Footer() {
   return (
     <footer className="bg-background border-t border-border">
-      <div className="max-w-7xl mx-auto px-6 py-16 sm:py-20">
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-10 lg:gap-16">
+      <div className="max-w-7xl mx-auto px-6 pt-16 sm:pt-20 pb-10">
 
+        {/* Top grid: nav columns + brand */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-8 lg:gap-10 mb-14">
           {/* Navigation columns */}
           {columns.map((col) => (
             <div key={col.label}>
-              <p className="mb-5 text-[10px] font-bold tracking-[0.18em] uppercase text-zinc-500">
+              <p className="mb-4 text-[10px] font-bold tracking-[0.18em] uppercase text-zinc-600">
                 {col.label}
               </p>
-              <ul className="space-y-3">
+              <ul className="space-y-2.5">
                 {col.links.map((link) => (
                   <li key={link.label}>
                     <Link
                       href={link.href}
-                      className="flex items-center gap-1.5 text-sm text-zinc-500 hover:text-zinc-200 transition-colors duration-150"
+                      className="flex items-center gap-1.5 text-sm text-zinc-500 hover:text-zinc-200 transition-colors duration-150 focus:outline-none focus-visible:text-accent"
                     >
                       {link.label}
                       {"soon" in link && link.soon && (
-                        <span className="text-[8px] font-bold text-text-muted border border-border rounded-full px-1.5 py-0.5">
+                        <span className="text-[8px] font-bold text-zinc-600 border border-zinc-800 rounded-full px-1.5 py-px">
                           Soon
                         </span>
                       )}
@@ -98,24 +113,40 @@ export default function Footer() {
           ))}
 
           {/* Brand column */}
-          <div className="col-span-2 sm:col-span-1 flex flex-col justify-between">
-            {/* Logo */}
-            <div>
-              <Link href={ROUTES.HOME} className="flex items-center gap-2.5 mb-4 group">
-                <div className="w-8 h-8 rounded-xl bg-accent flex items-center justify-center group-hover:bg-accent-hover transition-colors shrink-0">
-                  <svg viewBox="0 0 16 16" fill="none" className="w-4 h-4 text-white">
-                    <path d="M8 1L10.5 6H15L11 9.5L12.5 15L8 12L3.5 15L5 9.5L1 6H5.5L8 1Z" fill="currentColor"/>
-                  </svg>
+          <div className="col-span-2 sm:col-span-1 flex flex-col gap-5">
+            <Link
+              href={ROUTES.HOME}
+              className="flex items-center gap-2.5 group focus:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded-lg"
+              aria-label="Genesis AI home"
+            >
+              <div className="w-8 h-8 rounded-xl bg-accent flex items-center justify-center group-hover:bg-accent-hover transition-colors">
+                <svg viewBox="0 0 16 16" fill="none" className="w-4 h-4 text-white" aria-hidden>
+                  <path d="M8 1L10.5 6H15L11 9.5L12.5 15L8 12L3.5 15L5 9.5L1 6H5.5L8 1Z" fill="currentColor"/>
+                </svg>
+              </div>
+              <span className="text-sm font-bold text-white">Genesis AI</span>
+            </Link>
+
+            <p className="text-sm text-zinc-500 leading-relaxed">
+              Build your AI workforce in minutes. No engineers required.
+            </p>
+
+            {/* Security badges */}
+            <div className="flex flex-col gap-2">
+              {[
+                { label: "SOC 2 Compliant", icon: "🛡" },
+                { label: "GDPR Ready",       icon: "🔒" },
+                { label: "Gemini 2.5 Flash", icon: "⚡" },
+              ].map((b) => (
+                <div key={b.label} className="flex items-center gap-2 text-[10px] font-medium text-zinc-600">
+                  <span aria-hidden>{b.icon}</span>
+                  {b.label}
                 </div>
-                <span className="text-sm font-bold text-white tracking-tight">Genesis AI</span>
-              </Link>
-              <p className="text-sm text-zinc-500 leading-relaxed max-w-[200px]">
-                Build your AI workforce in minutes. No engineers required.
-              </p>
+              ))}
             </div>
 
-            {/* Socials */}
-            <div className="flex items-center gap-3 mt-8">
+            {/* Social icons */}
+            <div className="flex items-center gap-2 mt-1">
               {socials.map((s) => (
                 <a
                   key={s.label}
@@ -123,7 +154,7 @@ export default function Footer() {
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label={s.label}
-                  className="w-8 h-8 rounded-lg bg-surface border border-border flex items-center justify-center text-zinc-500 hover:text-zinc-200 hover:border-border-hover transition-all"
+                  className="w-8 h-8 rounded-lg bg-surface border border-border flex items-center justify-center text-zinc-500 hover:text-zinc-200 hover:border-border-hover transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                 >
                   {s.icon}
                 </a>
@@ -133,13 +164,18 @@ export default function Footer() {
         </div>
 
         {/* Bottom bar */}
-        <div className="mt-16 pt-8 border-t border-border flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p className="text-xs text-zinc-600">
+        <div className="pt-8 border-t border-border flex flex-col sm:flex-row items-center justify-between gap-4">
+          <p className="text-xs text-zinc-600 order-2 sm:order-1">
             © {new Date().getFullYear()} Genesis AI. All rights reserved.
           </p>
-          <div className="flex items-center gap-2">
-            <div className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" aria-hidden />
-            <p className="text-xs text-zinc-600">All systems operational</p>
+
+          <div className="flex items-center gap-4 order-1 sm:order-2">
+            <div className="flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" aria-hidden />
+              <span className="text-xs text-zinc-600">All systems operational</span>
+            </div>
+            <span className="text-zinc-800 text-xs hidden sm:block" aria-hidden>·</span>
+            <span className="text-xs text-zinc-700">v1.0</span>
           </div>
         </div>
       </div>

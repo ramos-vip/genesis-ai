@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Navbar             from "@/components/layout/Navbar";
 import Footer             from "@/components/layout/Footer";
 import Hero               from "@/components/sections/Hero";
@@ -12,30 +13,38 @@ import IndustrySolutions  from "@/components/sections/IndustrySolutions";
 import PricingSection     from "@/components/sections/PricingSection";
 import FAQ                from "@/components/sections/FAQ";
 
+export const metadata: Metadata = {
+  title: "Genesis AI — Build Your AI Workforce in Minutes",
+};
+
 export default function Home() {
   return (
     <>
       <Navbar />
-      <main>
-        {/* Above the fold */}
+
+      <main id="main-content" tabIndex={-1}>
+        {/* Hero */}
         <Hero />
 
-        {/* Problem → Solution → Platform → Social proof */}
-        <Problem />
+        {/* Problem → Solution → Platform */}
+        <div id="solutions"><Problem /></div>
         <SolutionCards />
-        <PlatformFeatures />
+        <div id="platform"><PlatformFeatures /></div>
+
+        {/* Product in action */}
         <AIShowcase />
         <KnowledgeExperience />
 
-        {/* Walkthrough → Outcomes → Industries */}
+        {/* Journey + Proof */}
         <HowItWorks />
         <BusinessOutcomes />
         <IndustrySolutions />
 
-        {/* Pricing → FAQ */}
+        {/* Conversion */}
         <PricingSection />
         <FAQ />
       </main>
+
       <Footer />
     </>
   );
