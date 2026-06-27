@@ -5,43 +5,44 @@ import { queryKeys } from "@/shared/constants";
 import { employeeService } from "../services/employeeService";
 import type { CreateEmployeeDto, UpdateEmployeeDto } from "../types";
 
-/** All employees list */
+/** All employees — uses Server Action under the hood */
 export function useEmployees() {
   return useQuery({
-    queryKey:  queryKeys.employees.list(),
-    queryFn:   () => employeeService.getAll(),
-    staleTime: 0, // Always fresh — mock data can change from another tab
+    queryKey: queryKeys.employees.list(),
+    queryFn:  () => employeeService.getAll(),
+    staleTime: 30_000, // 30s — avoids hammering the DB on every focus change
   });
 }
 
-/** Single employee */
+/** Single employee by id */
 export function useEmployee(id: string) {
   return useQuery({
     queryKey: queryKeys.employees.detail(id),
     queryFn:  () => employeeService.getById(id),
     enabled:  !!id,
+    staleTime: 30_000,
   });
 }
 
-/** Create mutation — invalidates list on success */
+/** Create — invalidates all employee queries on success */
 export function useCreateEmployee() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (dto: CreateEmployeeDto) => Promise.resolve(employeeService.create(dto)),
+    mutationFn: (dto: CreateEmployeeDto) => employeeService.create(dto),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.employees.all() });
     },
   });
 }
 
-/** Update mutation */
+/** Update — invalidates list and the specific detail query */
 export function useUpdateEmployee() {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: ({ id, dto }: { id: string; dto: UpdateEmployeeDto }) =>
-      Promise.resolve(employeeService.update(id, dto)),
+      employeeService.update(id, dto),
     onSuccess: (_, { id }) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.employees.all() });
       queryClient.invalidateQueries({ queryKey: queryKeys.employees.detail(id) });
@@ -49,17 +50,15 @@ export function useUpdateEmployee() {
   });
 }
 
-/** Delete mutation */
+/** Delete — invalidates all employee queries and removes the detail cache entry */
 export function useDeleteEmployee() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (id: string) => {
-      employeeService.delete(id);
-      return Promise.resolve();
-    },
-    onSuccess: () => {
+    mutationFn: (id: string) => employeeService.delete(id),
+    onSuccess: (_, id) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.employees.all() });
+      queryClient.removeQueries({ queryKey: queryKeys.employees.detail(id) });
     },
   });
 }
