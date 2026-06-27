@@ -2,14 +2,18 @@
  * Employee Service — Mock Implementation
  *
  * Implements the same interface the real service will use.
- * Persistence: localStorage (browser only).
+ * Persistence: localStorage (browser-only).
  *
- * To replace with real API: create employeeService.api.ts implementing
- * the same exported shape and swap the import in hooks/useEmployees.ts.
- * Zero UI changes required.
+ * To replace with real API: swap the import in hooks/useEmployees.ts.
+ * No UI or hook changes required.
  */
 
-import type { Employee, CreateEmployeeDto, UpdateEmployeeDto } from "../types";
+import type {
+  Employee,
+  CreateEmployeeDto,
+  UpdateEmployeeDto,
+} from "../types";
+import { DEFAULT_EMPLOYEE_CONFIG } from "../types";
 import { toId } from "@/shared/types";
 
 const STORAGE_KEY = "genesis:employees:v1";
@@ -36,23 +40,18 @@ function write(employees: Employee[]): void {
   if (typeof window === "undefined") return;
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(employees));
-  } catch {
-    // QuotaExceededError — fail silently in mock
-  }
+  } catch { /* QuotaExceededError — fail silently */ }
 }
 
 export const employeeService = {
-  /** List all employees for the current organization */
   getAll(): Employee[] {
     return read();
   },
 
-  /** Get a single employee by id */
   getById(id: string): Employee | null {
     return read().find((e) => e.id === toId(id)) ?? null;
   },
 
-  /** Create a new employee */
   create(dto: CreateEmployeeDto): Employee {
     const employees = read();
     const timestamp = now();
@@ -64,11 +63,7 @@ export const employeeService = {
       status:         "active",
       description:    dto.description.trim(),
       organizationId: toId("org_mock"),
-      config: {
-        toneOfVoice:     "professional",
-        language:        "en",
-        escalationRules: [],
-      },
+      config:         { ...DEFAULT_EMPLOYEE_CONFIG },
       stats: {
         tasksCompleted:  0,
         tasksToday:      0,
@@ -85,23 +80,28 @@ export const employeeService = {
     return employee;
   },
 
-  /** Update an existing employee */
   update(id: string, dto: UpdateEmployeeDto): Employee {
     const employees = read();
     const idx = employees.findIndex((e) => e.id === toId(id));
     if (idx === -1) throw new Error(`Employee ${id} not found`);
 
+    const existing = employees[idx];
     const updated: Employee = {
-      ...employees[idx],
-      ...dto,
+      ...existing,
+      ...(dto.name        !== undefined && { name: dto.name }),
+      ...(dto.role        !== undefined && { role: dto.role }),
+      ...(dto.description !== undefined && { description: dto.description }),
+      ...(dto.status      !== undefined && { status: dto.status }),
+      /* Deep-merge config — only replace keys explicitly provided */
+      config:    dto.config ? { ...existing.config, ...dto.config } : existing.config,
       updatedAt: now() as Employee["updatedAt"],
     };
+
     employees[idx] = updated;
     write(employees);
     return updated;
   },
 
-  /** Delete an employee */
   delete(id: string): void {
     write(read().filter((e) => e.id !== toId(id)));
   },

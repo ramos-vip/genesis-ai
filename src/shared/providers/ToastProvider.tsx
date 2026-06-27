@@ -25,8 +25,8 @@ type ToastInput = Omit<Toast, "id">;
 
 interface ToastContextValue {
   toasts:     Toast[];
-  /** Show a toast. Returns the generated id. */
-  toast:      (input: ToastInput) => string;
+  /** Show a toast. Returns the generated id. Includes .success/.error/.warning/.info shortcuts. */
+  toast:      ToastFn;
   dismiss:    (id: string) => void;
   dismissAll: () => void;
 }

@@ -30,6 +30,7 @@ export { default as FAQList }      from './FAQList';
 export { default as ProgressBar }  from './ProgressBar';
 export { default as Stepper }      from './Stepper';
 export type { StepDefinition }     from './Stepper';
+export { default as Slider }       from './Slider';
 
 // Types
 export type { ButtonVariant, ButtonSize }   from './Button';

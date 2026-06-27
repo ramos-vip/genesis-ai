@@ -6,10 +6,11 @@ import { WizardContext, useCreateEmployeeWizard } from "../hooks/useCreateEmploy
 import { useCreateEmployee } from "../hooks/useEmployees";
 import { WIZARD_STEPS, TOTAL_STEPS } from "../constants";
 import { ROUTES } from "@/shared/constants";
-import Stepper   from "@/components/ui/Stepper";
+import { useToast } from "@/shared/providers";
+import Stepper     from "@/components/ui/Stepper";
 import ProgressBar from "@/components/ui/ProgressBar";
-import Button    from "@/components/ui/Button";
-import Spinner   from "@/components/ui/Spinner";
+import Button      from "@/components/ui/Button";
+import Spinner     from "@/components/ui/Spinner";
 import Step1Name        from "./steps/Step1Name";
 import Step2Role        from "./steps/Step2Role";
 import Step3Description from "./steps/Step3Description";
@@ -17,7 +18,7 @@ import Step4Knowledge   from "./steps/Step4Knowledge";
 import Step5Review      from "./steps/Step5Review";
 import type { EmployeeRole } from "../types";
 
-/* ─── Success Screen ─────────────────────────────────────────────────────── */
+/* ─── Success Screen ──────────────────────────────────────────────────────── */
 
 function SuccessScreen({ name, role }: { name: string; role: string }) {
   const router = useRouter();
@@ -29,7 +30,6 @@ function SuccessScreen({ name, role }: { name: string; role: string }) {
 
   return (
     <div className="flex flex-col items-center justify-center py-16 text-center animate-scale-in">
-      {/* Check icon */}
       <div className="mb-6 w-20 h-20 rounded-full bg-success/10 border border-success/20 flex items-center justify-center">
         <svg
           viewBox="0 0 24 24"
@@ -46,16 +46,21 @@ function SuccessScreen({ name, role }: { name: string; role: string }) {
       <h2 className="text-2xl font-bold text-white mb-2">
         {name} has been created!
       </h2>
-      <p className="text-text-secondary text-sm mb-2">
+      <p className="text-sm text-text-secondary mb-2">
         Your {role} AI is ready to work.
       </p>
-      <p className="text-text-muted text-xs mb-8">
-        Redirecting to dashboard in 3 seconds…
-      </p>
+      <p className="text-xs text-text-muted mb-8">Redirecting to dashboard in 3 seconds…</p>
 
       <Button variant="primary" href={ROUTES.APP.DASHBOARD}>
         Go to Dashboard
-        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-4 h-4" aria-hidden>
+        <svg
+          viewBox="0 0 16 16"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          className="w-4 h-4"
+          aria-hidden
+        >
           <path d="M3 8h10M9 4l4 4-4 4" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       </Button>
@@ -63,7 +68,7 @@ function SuccessScreen({ name, role }: { name: string; role: string }) {
   );
 }
 
-/* ─── Step registry ──────────────────────────────────────────────────────── */
+/* ─── Step registry ───────────────────────────────────────────────────────── */
 
 const STEP_COMPONENTS = [
   Step1Name,
@@ -73,13 +78,14 @@ const STEP_COMPONENTS = [
   Step5Review,
 ] as const;
 
-/* ─── Wizard ─────────────────────────────────────────────────────────────── */
+/* ─── Wizard ──────────────────────────────────────────────────────────────── */
 
 export default function CreateEmployeeWizard() {
-  const wizard  = useCreateEmployeeWizard();
+  const wizard                          = useCreateEmployeeWizard();
   const { mutateAsync: createEmployee } = useCreateEmployee();
+  const { toast }                       = useToast();
 
-  const { state, tryNext, prev, setSubmitting, submitDispatch } = wizard;
+  const { state, tryNext, prev, jumpToStep, setSubmitting, submitDispatch } = wizard;
   const StepComponent = STEP_COMPONENTS[state.step];
 
   const contextValue = {
@@ -87,14 +93,11 @@ export default function CreateEmployeeWizard() {
     setField:   wizard.setField,
     tryNext,
     prev,
+    jumpToStep,
     canGoBack:  wizard.canGoBack,
     isLastStep: wizard.isLastStep,
     progress:   wizard.progress,
   };
-
-  async function handleNext() {
-    if (!tryNext()) return;
-  }
 
   async function handleCreate() {
     setSubmitting();
@@ -106,18 +109,19 @@ export default function CreateEmployeeWizard() {
         knowledgeSources: state.data.knowledgeSources,
       });
       submitDispatch(employee);
+      toast.success(`${employee.name} has been created!`);
     } catch {
-      // Error handling will be added when real API is connected (Sprint 6)
+      toast.error("Failed to create employee. Please try again.");
     }
   }
 
   if (state.isSuccess && state.createdEmployee) {
     const { name, role } = state.createdEmployee;
-    const roleLabel      = role.charAt(0).toUpperCase() + role.slice(1);
+    const roleLabel = role.charAt(0).toUpperCase() + role.slice(1);
     return <SuccessScreen name={name} role={roleLabel} />;
   }
 
-  const progress = Math.round(((state.step) / TOTAL_STEPS) * 100);
+  const progress = Math.round((state.step / TOTAL_STEPS) * 100);
 
   return (
     <WizardContext.Provider value={contextValue}>
@@ -128,9 +132,7 @@ export default function CreateEmployeeWizard() {
             <span className="text-xs text-text-muted">
               Step {state.step + 1} of {TOTAL_STEPS}
             </span>
-            <span className="text-xs text-text-muted">
-              {progress}% complete
-            </span>
+            <span className="text-xs text-text-muted">{progress}% complete</span>
           </div>
           <ProgressBar value={progress} className="mb-6" />
           <Stepper
@@ -152,7 +154,14 @@ export default function CreateEmployeeWizard() {
             onClick={prev}
             disabled={!wizard.canGoBack || state.isSubmitting}
           >
-            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-4 h-4" aria-hidden>
+            <svg
+              viewBox="0 0 16 16"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              className="w-4 h-4"
+              aria-hidden
+            >
               <path d="M13 8H3M7 12l-4-4 4-4" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
             Back
@@ -173,16 +182,30 @@ export default function CreateEmployeeWizard() {
               ) : (
                 <>
                   Create Employee
-                  <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-4 h-4" aria-hidden>
+                  <svg
+                    viewBox="0 0 16 16"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    className="w-4 h-4"
+                    aria-hidden
+                  >
                     <path d="M3 8h10M9 4l4 4-4 4" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                 </>
               )}
             </Button>
           ) : (
-            <Button variant="primary" size="md" onClick={handleNext}>
+            <Button variant="primary" size="md" onClick={() => tryNext()}>
               Continue
-              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-4 h-4" aria-hidden>
+              <svg
+                viewBox="0 0 16 16"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                className="w-4 h-4"
+                aria-hidden
+              >
                 <path d="M3 8h10M9 4l4 4-4 4" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </Button>

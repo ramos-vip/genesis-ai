@@ -11,18 +11,24 @@ export type EmployeeRole =
 
 export type EmployeeStatus = "active" | "paused" | "training" | "error" | "draft";
 
+export type ToneOfVoice = "professional" | "friendly" | "concise" | "custom";
+
 export interface EmployeeConfig {
-  toneOfVoice:     "professional" | "friendly" | "concise" | "custom";
-  customTone?:     string;
-  language:        string;
+  toneOfVoice:        ToneOfVoice;
+  customTone?:        string;
+  language:           string;
+  /** AI creativity / temperature: 0.0 (precise) – 1.0 (creative) */
+  temperature:        number;
+  /** System prompt injected before every conversation */
+  systemInstructions: string;
   responseMaxLength?: number;
-  escalationRules: EscalationRule[];
+  escalationRules:    EscalationRule[];
 }
 
 export interface EscalationRule {
-  trigger:  string;
-  action:   "email" | "slack" | "webhook";
-  target:   string;
+  trigger: string;
+  action:  "email" | "slack" | "webhook";
+  target:  string;
 }
 
 export interface EmployeeStats {
@@ -54,9 +60,14 @@ export interface CreateEmployeeDto {
   knowledgeSources: string[];
 }
 
-export type UpdateEmployeeDto = Partial<CreateEmployeeDto & { status: EmployeeStatus }>;
+/** Partial update — config is deep-merged in the service */
+export type UpdateEmployeeDto = Partial<
+  Pick<Employee, "name" | "role" | "description" | "status"> & {
+    config: Partial<EmployeeConfig>;
+  }
+>;
 
-/** Wizard state data shape */
+/** Wizard multi-step form data */
 export interface WizardData {
   name:             string;
   role:             EmployeeRole | "";
@@ -69,4 +80,12 @@ export const INITIAL_WIZARD_DATA: WizardData = {
   role:             "",
   description:      "",
   knowledgeSources: [],
+};
+
+export const DEFAULT_EMPLOYEE_CONFIG: EmployeeConfig = {
+  toneOfVoice:        "professional",
+  language:           "en",
+  temperature:        0.5,
+  systemInstructions: "",
+  escalationRules:    [],
 };
