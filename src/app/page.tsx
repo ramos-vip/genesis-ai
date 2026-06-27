@@ -4,8 +4,9 @@ import Hero            from "@/components/sections/Hero";
 import Problem         from "@/components/sections/Problem";
 import SolutionCards   from "@/components/sections/SolutionCards";
 import PlatformFeatures from "@/components/sections/PlatformFeatures";
-import AIShowcase      from "@/components/sections/AIShowcase";
-import HowItWorks      from "@/components/sections/HowItWorks";
+import AIShowcase          from "@/components/sections/AIShowcase";
+import KnowledgeExperience from "@/components/sections/KnowledgeExperience";
+import HowItWorks          from "@/components/sections/HowItWorks";
 import Testimonials    from "@/components/sections/Testimonials";
 import PricingPreview  from "@/components/sections/PricingPreview";
 import FAQ             from "@/components/sections/FAQ";
@@ -23,6 +24,7 @@ export default function Home() {
         <SolutionCards />
         <PlatformFeatures />
         <AIShowcase />
+        <KnowledgeExperience />
 
         {/* How it works, social proof, pricing, FAQ */}
         <HowItWorks />

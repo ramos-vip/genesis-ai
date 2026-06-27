@@ -177,6 +177,13 @@ body {
 }
 
 .hero-float          { animation: hero-float  4s ease-in-out infinite; }
+
+/* Sequential pipeline step reveal */
+@keyframes step-fade-in {
+  from { opacity: 0; transform: translateY(5px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.step-fade-in { animation: step-fade-in 0.4s cubic-bezier(0.16,1,0.3,1) both; }
 .hero-badge-float    { animation: badge-float 3.5s ease-in-out infinite; }
 .hero-glow-drift     { animation: glow-drift  8s ease-in-out infinite; }
 .hero-preview-appear { animation: preview-appear 0.8s cubic-bezier(0.16,1,0.3,1) 0.3s both; }
