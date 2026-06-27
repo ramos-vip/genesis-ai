@@ -1,14 +1,10 @@
 import { auth }                from "@clerk/nextjs/server";
-import { GoogleGenerativeAI } from "@google/generative-ai";
 import { employeeRepository }  from "@/server/repositories/employeeRepository";
-
-interface HistoryMessage {
-  role:    "user" | "model";
-  content: string;
-}
+import { AIRouter }            from "@/server/ai";
+import type { ChatMessage }    from "@/server/ai";
 
 interface ChatRequestBody {
-  history: HistoryMessage[];
+  history: ChatMessage[];
   message: string;
 }
 
@@ -18,9 +14,7 @@ export async function POST(
 ) {
   /* ── Auth ── */
   const { userId } = await auth();
-  if (!userId) {
-    return new Response("Unauthorized", { status: 401 });
-  }
+  if (!userId) return new Response("Unauthorized", { status: 401 });
 
   const { employeeId } = await params;
 
@@ -33,68 +27,18 @@ export async function POST(
   }
 
   const { history = [], message } = body;
-  if (!message?.trim()) {
-    return new Response("Message is required", { status: 400 });
-  }
+  if (!message?.trim()) return new Response("Message is required", { status: 400 });
 
   /* ── Load employee — verifies ownership ── */
   const employee = await employeeRepository.findById(userId, employeeId);
-  if (!employee) {
-    return new Response("Employee not found", { status: 404 });
-  }
+  if (!employee) return new Response("Employee not found", { status: 404 });
 
-  /* ── Gemini setup ── */
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) {
-    return new Response(
-      "GEMINI_API_KEY is not configured. Add it to .env.local.",
-      { status: 500 }
-    );
-  }
-
-  const modelName  = process.env.GEMINI_MODEL ?? "gemini-2.5-flash";
-  const systemPrompt =
-    employee.config.systemInstructions.trim() ||
-    `You are ${employee.name}, an AI ${employee.role} specialist. Be helpful, professional, and focused on ${employee.role} tasks. Keep responses concise and actionable.`;
-
-  const genAI = new GoogleGenerativeAI(apiKey);
-  const model = genAI.getGenerativeModel({
-    model: modelName,
-    systemInstruction: systemPrompt,
-  });
-
-  const chat = model.startChat({
-    history: history.map((m) => ({
-      role:  m.role,
-      parts: [{ text: m.content }],
-    })),
-    generationConfig: {
-      temperature:     employee.config.temperature,
-      maxOutputTokens: 8192,
-    },
-  });
-
-  /* ── Stream response ── */
+  /* ── Delegate to AI router ── */
   try {
-    const streamResult = await chat.sendMessageStream(message.trim());
+    const router = new AIRouter(employee);
+    const stream = await router.chat(history, message.trim());
 
-    const readable = new ReadableStream({
-      async start(controller) {
-        try {
-          for await (const chunk of streamResult.stream) {
-            const text = chunk.text();
-            if (text) {
-              controller.enqueue(new TextEncoder().encode(text));
-            }
-          }
-          controller.close();
-        } catch (err) {
-          controller.error(err);
-        }
-      },
-    });
-
-    return new Response(readable, {
+    return new Response(stream, {
       headers: {
         "Content-Type":           "text/plain; charset=utf-8",
         "X-Content-Type-Options": "nosniff",
@@ -102,7 +46,7 @@ export async function POST(
       },
     });
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Gemini request failed";
-    return new Response(message, { status: 502 });
+    const msg = err instanceof Error ? err.message : "AI request failed";
+    return new Response(msg, { status: 502 });
   }
 }
