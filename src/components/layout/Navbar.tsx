@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import Button from "@/components/ui/Button";
+import { ROUTES } from "@/shared/constants";
 
 const navLinks = [
   { label: "Features", href: "#features" },
@@ -40,15 +41,11 @@ export default function Navbar() {
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between gap-8">
           {/* Logo */}
           <Link
-            href="/"
+            href={ROUTES.HOME}
             className="flex items-center gap-2 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded-lg"
           >
             <div className="w-7 h-7 rounded-lg bg-accent flex items-center justify-center">
-              <svg
-                viewBox="0 0 16 16"
-                fill="none"
-                className="w-4 h-4 text-white"
-              >
+              <svg viewBox="0 0 16 16" fill="none" className="w-4 h-4 text-white">
                 <path
                   d="M8 1L10.5 6H15L11 9.5L12.5 15L8 12L3.5 15L5 9.5L1 6H5.5L8 1Z"
                   fill="currentColor"
@@ -75,10 +72,10 @@ export default function Navbar() {
 
           {/* Desktop auth */}
           <div className="hidden md:flex items-center gap-3">
-            <Button variant="ghost" size="sm">
+            <Button variant="ghost" size="sm" href={ROUTES.AUTH.LOGIN}>
               Login
             </Button>
-            <Button variant="primary" size="sm" href="#">
+            <Button variant="primary" size="sm" href={ROUTES.AUTH.SIGNUP}>
               Get Started
             </Button>
           </div>
@@ -127,10 +124,20 @@ export default function Navbar() {
               </Link>
             ))}
             <div className="mt-6 flex flex-col gap-3">
-              <Button variant="secondary" size="lg">
+              <Button
+                variant="secondary"
+                size="lg"
+                href={ROUTES.AUTH.LOGIN}
+                onClick={() => setMobileOpen(false)}
+              >
                 Login
               </Button>
-              <Button variant="primary" size="lg" href="#">
+              <Button
+                variant="primary"
+                size="lg"
+                href={ROUTES.AUTH.SIGNUP}
+                onClick={() => setMobileOpen(false)}
+              >
                 Get Started
               </Button>
             </div>

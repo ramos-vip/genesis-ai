@@ -32,11 +32,17 @@ export default function BehaviorSection({ employee }: BehaviorSectionProps) {
   const { toast }             = useToast();
   const { mutate, isPending } = useUpdateEmployee();
 
+  /*
+   * Sync ONLY when navigating to a different employee (employee.id changes).
+   * Using primitive config values would re-run on every TanStack Query refetch
+   * because the config object is a new reference each time, resetting in-progress edits.
+   */
   useEffect(() => {
     setInstructions(employee.config.systemInstructions);
     setTone(employee.config.toneOfVoice);
     setTemperature(Math.round(employee.config.temperature * 100));
-  }, [employee.id, employee.config]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [employee.id]);
 
   const isDirty =
     instructions !== employee.config.systemInstructions ||

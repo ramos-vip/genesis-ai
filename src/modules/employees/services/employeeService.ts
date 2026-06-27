@@ -1,11 +1,15 @@
+"use client";
+
 /**
  * Employee Service
  *
- * Single interface between the UI layer (TanStack Query hooks) and
- * the data layer (Server Actions → Repository → Drizzle → Neon).
+ * Explicit "use client" directive tells Turbopack to bundle this file
+ * for the client and replace the Server Action imports with RPC stubs.
+ * Without this directive, Turbopack has to infer the boundary from the
+ * import chain, which can cause silent failures in some configurations.
  *
- * The hooks never import Server Actions or the repository directly.
- * Swapping the data layer means changing only this file.
+ * This file is the only layer that touches Server Actions.
+ * Hooks call this service; they never import Server Actions directly.
  */
 
 import {
@@ -18,23 +22,9 @@ import {
 import type { Employee, CreateEmployeeDto, UpdateEmployeeDto } from "../types";
 
 export const employeeService = {
-  /** Fetch all employees for the authenticated user */
-  getAll: (): Promise<Employee[]> =>
-    getEmployeesAction(),
-
-  /** Fetch a single employee by id (returns null if not found or not owned) */
-  getById: (id: string): Promise<Employee | null> =>
-    getEmployeeByIdAction(id),
-
-  /** Create a new employee */
-  create: (dto: CreateEmployeeDto): Promise<Employee> =>
-    createEmployeeAction(dto),
-
-  /** Partially update an employee */
-  update: (id: string, dto: UpdateEmployeeDto): Promise<Employee> =>
-    updateEmployeeAction(id, dto),
-
-  /** Permanently delete an employee */
-  delete: (id: string): Promise<void> =>
-    deleteEmployeeAction(id),
+  getAll:   (): Promise<Employee[]>           => getEmployeesAction(),
+  getById:  (id: string): Promise<Employee | null> => getEmployeeByIdAction(id),
+  create:   (dto: CreateEmployeeDto): Promise<Employee> => createEmployeeAction(dto),
+  update:   (id: string, dto: UpdateEmployeeDto): Promise<Employee> => updateEmployeeAction(id, dto),
+  delete:   (id: string): Promise<void>       => deleteEmployeeAction(id),
 } as const;

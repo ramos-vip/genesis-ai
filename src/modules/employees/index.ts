@@ -8,9 +8,6 @@ export * from "./constants";
 export * from "./hooks/useEmployees";
 export * from "./hooks/useCreateEmployeeWizard";
 
-// Service
-export { employeeService } from "./services/employeeService";
-
 // Components
 export { default as CreateEmployeeWizard } from "./components/CreateEmployeeWizard";
 export { default as EmployeeCard }         from "./components/EmployeeCard";
