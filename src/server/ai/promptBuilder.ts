@@ -1,15 +1,14 @@
+import { employeeKnowledgeRepository } from "@/server/repositories/employeeKnowledgeRepository";
+import type { KnowledgeSource, TextMeta, UrlMeta, PdfMeta } from "@/modules/knowledge/types";
 import type { ChatMessage } from "./provider";
 
 /**
  * The fully-assembled prompt handed to a provider.
  *
- * Prompt assembly order (matches Gemini's native turn structure):
- *   1. systemInstruction — employee instructions + role context
+ * Assembly order:
+ *   1. systemInstruction — system instructions + knowledge context + role
  *   2. history           — prior conversation turns, oldest first
  *   3. message           — the current user message
- *
- * Future Knowledge sprint: retrieved RAG chunks are injected into
- * systemInstruction (between instructions and role) — no other file changes.
  */
 export interface BuiltPrompt {
   systemInstruction: string;
@@ -17,62 +16,134 @@ export interface BuiltPrompt {
   message:           string;
 }
 
-interface PromptBuilderInput {
-  /** From employee.config.systemInstructions — may be empty */
+export interface PromptBuilderInput {
   systemInstructions: string;
-  /** From employee.role — e.g. "support", "sales" */
   role:               string;
-  /** From employee.name — used in default fallback */
   name:               string;
-  /** Prior conversation turns, oldest first */
+  /** Used to load linked knowledge sources */
+  employeeId:         string;
+  /** clerkUserId — equals employee.organizationId until multi-tenancy is added */
+  clerkUserId:        string;
   history:            ChatMessage[];
-  /** Current user message */
   message:            string;
 }
 
 /**
- * PromptBuilder — single source of truth for how prompts are assembled.
+ * PromptBuilder — single source of truth for prompt assembly.
  *
- * All prompt composition lives here. Providers receive only the final
- * BuiltPrompt; they are never aware of employee data or business rules.
+ * Assembles the system instruction in this order:
+ *   1. Employee System Instructions (custom, or auto-generated fallback)
+ *   2. Knowledge Context            (linked sources — this sprint)
+ *   3. Employee Role
+ *
+ * Providers receive only the final BuiltPrompt.
+ * Future RAG sprint: replace full content with retrieved chunks — no other file changes.
  */
 export class PromptBuilder {
-  build(input: PromptBuilderInput): BuiltPrompt {
+  async build(input: PromptBuilderInput): Promise<BuiltPrompt> {
+    const sources = await this.loadKnowledge(input.clerkUserId, input.employeeId);
+
     return {
-      systemInstruction: this.assembleSystemInstruction(input),
+      systemInstruction: this.assembleSystemInstruction(input, sources),
       history:           input.history,
       message:           input.message,
     };
   }
 
-  /**
-   * Assemble the system instruction in the required order:
-   *
-   *   1. Employee System Instructions
-   *      (custom instructions, or default if empty)
-   *   2. Employee Role
-   *      (always appended so the model stays on-task)
-   *
-   * Knowledge context will be injected here as step 1.5 in the RAG sprint.
-   */
-  private assembleSystemInstruction(input: PromptBuilderInput): string {
+  /* ─── System instruction assembly ──────────────────────────────────────── */
+
+  private assembleSystemInstruction(
+    input:   PromptBuilderInput,
+    sources: KnowledgeSource[]
+  ): string {
     const sections: string[] = [];
 
     // ── 1. Employee System Instructions ──────────────────────────────────
-    const customInstructions = input.systemInstructions.trim();
-    if (customInstructions) {
-      sections.push(customInstructions);
-    } else {
-      sections.push(
-        `You are ${input.name}, an AI ${input.role} specialist. ` +
-        `Be helpful, professional, and focused on ${input.role} tasks. ` +
-        `Keep responses concise and actionable.`
-      );
+    const custom = input.systemInstructions.trim();
+    sections.push(
+      custom ||
+      `You are ${input.name}, an AI ${input.role} specialist. ` +
+      `Be helpful, professional, and focused on ${input.role} tasks. ` +
+      `Keep responses concise and actionable.`
+    );
+
+    // ── 2. Knowledge Context ──────────────────────────────────────────────
+    const readySources = sources.filter((s) => s.status === "ready");
+    if (readySources.length > 0) {
+      sections.push(this.buildKnowledgeContext(readySources));
     }
 
-    // ── 2. Employee Role ──────────────────────────────────────────────────
+    // ── 3. Employee Role ──────────────────────────────────────────────────
     sections.push(`Role: ${input.role}`);
 
     return sections.join("\n\n");
+  }
+
+  /* ─── Knowledge context formatter ──────────────────────────────────────── */
+
+  /**
+   * Formats linked knowledge sources into the required block:
+   *
+   *   === KNOWLEDGE ===
+   *
+   *   Source: [Name]
+   *   Type: [Text|URL|PDF]
+   *
+   *   Content...
+   *
+   *   ==================
+   */
+  private buildKnowledgeContext(sources: KnowledgeSource[]): string {
+    const lines: string[] = ["=== KNOWLEDGE ==="];
+
+    for (const source of sources) {
+      lines.push("");
+      lines.push(`Source: ${source.name}`);
+      lines.push(`Type: ${this.typeLabel(source.type)}`);
+      lines.push("");
+
+      switch (source.type) {
+        case "text": {
+          const meta = source.meta as TextMeta;
+          lines.push(meta.content);
+          break;
+        }
+        case "url": {
+          const meta = source.meta as UrlMeta;
+          lines.push(`Reference: ${meta.url}`);
+          lines.push("(Content not yet fetched — web crawling is pending.)");
+          break;
+        }
+        case "pdf": {
+          const meta = source.meta as PdfMeta;
+          lines.push(`File: ${meta.fileName}`);
+          if (meta.pageCount) lines.push(`Pages: ${meta.pageCount}`);
+          lines.push("(Full text extraction is pending.)");
+          break;
+        }
+      }
+    }
+
+    lines.push("");
+    lines.push("==================");
+    return lines.join("\n");
+  }
+
+  private typeLabel(type: KnowledgeSource["type"]): string {
+    return { text: "Text", url: "URL", pdf: "PDF" }[type];
+  }
+
+  /* ─── Data loading ──────────────────────────────────────────────────────── */
+
+  private async loadKnowledge(
+    clerkUserId: string,
+    employeeId:  string
+  ): Promise<KnowledgeSource[]> {
+    try {
+      return await employeeKnowledgeRepository.getLinked(clerkUserId, employeeId);
+    } catch {
+      // Knowledge loading must never break the chat flow
+      return [];
+    }
   }
 }

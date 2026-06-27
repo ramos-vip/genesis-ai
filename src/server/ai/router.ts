@@ -8,34 +8,32 @@ import { PromptBuilder  } from "./promptBuilder";
  *
  * Responsibilities:
  *   1. Resolve the active provider from environment config (AI_PROVIDER)
- *   2. Delegate prompt assembly to PromptBuilder
+ *   2. Delegate prompt assembly to PromptBuilder (including knowledge loading)
  *   3. Forward the BuiltPrompt to the provider
  *
- * The Route Handler owns: auth, parsing, employee lookup, HTTP response.
- * PromptBuilder owns: all prompt content decisions.
- * This class owns: provider selection and orchestration.
- *
- * Adding a new provider (e.g. OpenAI):
- *   1. Create OpenAIProvider implementing AIProvider in openai.ts
- *   2. Add `case "openai": return new OpenAIProvider(...)` below
- *   3. Set AI_PROVIDER=openai + OPENAI_API_KEY in .env.local
- *   — No other file changes required.
+ * Public interface: chat(history, message) — unchanged.
+ * Route Handler, GeminiProvider: unchanged.
  */
 export class AIRouter {
-  private readonly provider:       AIProvider;
-  private readonly promptBuilder:  PromptBuilder;
-  private readonly temperature:    number;
-  private readonly employeeName:   string;
-  private readonly employeeRole:   EmployeeRole;
-  private readonly systemInstructions: string;
+  private readonly provider:            AIProvider;
+  private readonly promptBuilder:       PromptBuilder;
+  private readonly temperature:         number;
+  private readonly employeeName:        string;
+  private readonly employeeRole:        EmployeeRole;
+  private readonly systemInstructions:  string;
+  private readonly employeeId:          string;
+  /** employee.organizationId === clerkUserId (mapped in repository) */
+  private readonly clerkUserId:         string;
 
   constructor(employee: Employee) {
-    this.provider            = AIRouter.resolveProvider();
-    this.promptBuilder       = new PromptBuilder();
-    this.temperature         = employee.config.temperature;
-    this.employeeName        = employee.name;
-    this.employeeRole        = employee.role;
-    this.systemInstructions  = employee.config.systemInstructions;
+    this.provider           = AIRouter.resolveProvider();
+    this.promptBuilder      = new PromptBuilder();
+    this.temperature        = employee.config.temperature;
+    this.employeeName       = employee.name;
+    this.employeeRole       = employee.role;
+    this.systemInstructions = employee.config.systemInstructions;
+    this.employeeId         = employee.id;
+    this.clerkUserId        = employee.organizationId;
   }
 
   private static resolveProvider(): AIProvider {
@@ -70,10 +68,12 @@ export class AIRouter {
     history: ChatMessage[],
     message: string
   ): Promise<ReadableStream<Uint8Array>> {
-    const prompt = this.promptBuilder.build({
+    const prompt = await this.promptBuilder.build({
       systemInstructions: this.systemInstructions,
       role:               this.employeeRole,
       name:               this.employeeName,
+      employeeId:         this.employeeId,
+      clerkUserId:        this.clerkUserId,
       history,
       message,
     });
