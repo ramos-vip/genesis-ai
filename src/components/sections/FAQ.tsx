@@ -1,61 +1,75 @@
 import AnimateIn from "@/components/ui/AnimateIn";
-import SectionHeader from "@/components/ui/SectionHeader";
-import FAQList from "@/components/ui/FAQList";
+import FAQList   from "@/components/ui/FAQList";
 import { ROUTES } from "@/shared/constants";
 
 const faqs = [
   {
-    question: "What is Project Genesis?",
+    question: "How long does setup take?",
     answer:
-      "Project Genesis is an AI workforce platform that lets you create, deploy, and manage AI employees for sales, support, content, SEO, email, and operations — all from one dashboard. Each AI is purpose-built for its role and continuously improves over time.",
+      "Under 5 minutes from sign-up to your first AI conversation. Sign up, pick a role, give your employee a name, add a knowledge source, and you're live. No engineers, no lengthy onboarding, no setup fees.",
   },
   {
-    question: "How quickly can I get started?",
+    question: "Can the AI learn from my documents?",
     answer:
-      "You can have your first AI employee deployed in under 5 minutes. No coding required. Just sign up, pick a role, configure your preferences, and your AI starts working immediately. Most teams see results within the first 24 hours.",
-  },
-  {
-    question: "Can I customize my AI employees?",
-    answer:
-      "Absolutely. Each AI employee can be fine-tuned with your brand voice, tone guidelines, business rules, and specific workflows. You can upload documents, past examples, and custom instructions. Your AI learns from every interaction.",
-  },
-  {
-    question: "What integrations are available?",
-    answer:
-      "We integrate with Slack, Salesforce, HubSpot, Gmail, Google Analytics, Shopify, Notion, Linear, Jira, and 100+ other tools via native integrations and our public REST API. Webhooks and Zapier are also supported on Pro and Scale plans.",
+      "Yes — that's the core of Genesis AI. Upload PDFs, paste text, or connect a URL and your AI learns from that content immediately. We use RAG (Retrieval-Augmented Generation) so every answer is grounded in your actual documents, not generic training data.",
   },
   {
     question: "Is my data secure?",
     answer:
-      "Yes. We're SOC 2 Type II compliant and GDPR ready. All data is encrypted at rest (AES-256) and in transit (TLS 1.3). Your data is never used to train our models without your explicit consent. We maintain full audit logs of all AI actions.",
+      "Absolutely. Your data is never used to train our models without explicit consent. Every query filters by your user ID — no cross-account data exposure. All content is encrypted at rest and in transit. We're building toward SOC 2 compliance.",
   },
   {
-    question: "Can I cancel at any time?",
+    question: "Which AI models are supported?",
     answer:
-      "Yes, you can cancel your subscription at any time with no cancellation fees or lock-in periods. Your AI employees will continue working until the end of your current billing period, and you can export your data at any time.",
+      "Genesis AI currently uses Google Gemini 2.5 Flash for chat (fast, affordable, high-quality) and text-embedding-004 for knowledge retrieval. We're building multi-provider support — OpenAI, Anthropic, and local models are on the roadmap.",
+  },
+  {
+    question: "Can I upgrade my plan later?",
+    answer:
+      "Yes, anytime. Upgrade from the Billing page in your dashboard. Your data, employees, and conversations are preserved. There's no migration, no downtime, and no lock-in. You can also downgrade or cancel in one click.",
+  },
+  {
+    question: "Do I need technical knowledge to use Genesis AI?",
+    answer:
+      "No. Genesis AI is built for business owners and operators, not engineers. The entire setup — creating employees, uploading knowledge, starting conversations — is point-and-click. If you can use email, you can use Genesis AI.",
   },
 ];
 
 export default function FAQ() {
   return (
-    <section className="py-24 sm:py-32 bg-surface">
+    <section className="py-24 sm:py-32 bg-surface relative overflow-hidden">
+      <div
+        aria-hidden
+        className="absolute inset-x-0 top-0 h-px"
+        style={{ background: "linear-gradient(to right, transparent, rgba(255,255,255,0.06), transparent)" }}
+      />
+
       <div className="max-w-3xl mx-auto px-6">
         <AnimateIn>
-          <SectionHeader
-            label="FAQ"
-            title="Frequently asked questions"
-            subtitle="Everything you need to know about Project Genesis."
-          />
+          <div className="text-center mb-14">
+            <p className="text-xs font-semibold tracking-[0.2em] uppercase text-accent/80 mb-4">FAQ</p>
+            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-white leading-[1.1] mb-4">
+              Frequently asked questions
+            </h2>
+            <p className="text-base text-zinc-400 leading-relaxed">
+              Everything you need to know before you deploy your first AI employee.
+            </p>
+          </div>
         </AnimateIn>
 
-        <AnimateIn delay={100}>
-          <FAQList items={faqs} />
+        <AnimateIn delay={80}>
+          <div className="rounded-2xl border border-border bg-background overflow-hidden">
+            <FAQList items={faqs} />
+          </div>
         </AnimateIn>
 
-        <AnimateIn delay={150}>
-          <p className="mt-12 text-center text-sm text-zinc-500">
+        <AnimateIn delay={160}>
+          <p className="mt-10 text-center text-sm text-text-secondary">
             Still have questions?{" "}
-            <a href={ROUTES.AUTH.SIGNUP} className="text-accent hover:text-violet-400 transition-colors">
+            <a
+              href={ROUTES.AUTH.SIGNUP}
+              className="text-accent hover:text-violet-400 font-medium transition-colors focus:outline-none focus-visible:underline"
+            >
               Talk to our team →
             </a>
           </p>

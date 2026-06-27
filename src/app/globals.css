@@ -184,6 +184,14 @@ body {
   to   { opacity: 1; transform: translateY(0); }
 }
 .step-fade-in { animation: step-fade-in 0.4s cubic-bezier(0.16,1,0.3,1) both; }
+
+/* Stat counter pop-in (bouncy scale reveal) */
+@keyframes stat-pop {
+  0%   { opacity: 0; transform: scale(0.65) translateY(10px); }
+  65%  { opacity: 1; transform: scale(1.04) translateY(-2px); }
+  100% { opacity: 1; transform: scale(1)    translateY(0); }
+}
+.stat-pop { animation: stat-pop 0.55s cubic-bezier(0.34,1.56,0.64,1) both; }
 .hero-badge-float    { animation: badge-float 3.5s ease-in-out infinite; }
 .hero-glow-drift     { animation: glow-drift  8s ease-in-out infinite; }
 .hero-preview-appear { animation: preview-appear 0.8s cubic-bezier(0.16,1,0.3,1) 0.3s both; }
