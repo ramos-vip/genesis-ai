@@ -53,6 +53,36 @@ export const knowledgeSources = pgTable(
   ]
 );
 
+/* ─── Knowledge Chunks ────────────────────────────────────────────────────── */
+
+/**
+ * Pre-computed text chunks for knowledge sources.
+ *
+ * Text sources are split into ~500-token chunks (≈2000 chars) with
+ * ~100-token overlap (≈400 chars) at creation time.
+ *
+ * RAG sprint: these chunks will be embedded and stored in a vector index.
+ * The chunkIndex preserves original document order for reconstruction.
+ */
+export const knowledgeChunks = pgTable(
+  "knowledge_chunks",
+  {
+    id:                text("id").primaryKey(),
+    knowledgeSourceId: text("knowledge_source_id").notNull(),
+    chunkIndex:        integer("chunk_index").notNull(),
+    content:           text("content").notNull(),
+    /** Estimated token count (length ÷ 4) — accurate for English prose */
+    tokenCount:        integer("token_count").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    /** Primary lookup: all chunks for a source */
+    index("chunks_source_idx").on(table.knowledgeSourceId),
+    /** Ordered retrieval: chunks for a source in document order */
+    index("chunks_source_order_idx").on(table.knowledgeSourceId, table.chunkIndex),
+  ]
+);
+
 /* ─── Employee ↔ Knowledge Sources (many-to-many) ─────────────────────────── */
 
 export const employeeKnowledgeSources = pgTable(
@@ -60,7 +90,7 @@ export const employeeKnowledgeSources = pgTable(
   {
     employeeId:        text("employee_id").notNull(),
     knowledgeSourceId: text("knowledge_source_id").notNull(),
-    clerkUserId: text("clerk_user_id").notNull(),
+    clerkUserId:       text("clerk_user_id").notNull(),
     linkedAt: timestamp("linked_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
@@ -72,11 +102,6 @@ export const employeeKnowledgeSources = pgTable(
 
 /* ─── Conversations ───────────────────────────────────────────────────────── */
 
-/**
- * One conversation per (clerkUserId, employeeId) pair — enforced by uniqueIndex.
- * A conversation is created automatically on first chat open and reused thereafter.
- * Future: support multiple named conversations per employee.
- */
 export const conversations = pgTable(
   "conversations",
   {
@@ -84,22 +109,14 @@ export const conversations = pgTable(
     clerkUserId: text("clerk_user_id").notNull(),
     employeeId:  text("employee_id").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-    updatedAt: timestamp("updated_at", { withTimezone: true })
-      .notNull()
-      .defaultNow()
-      .$onUpdateFn(() => new Date()),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdateFn(() => new Date()),
   },
   (table) => [
-    /** Ensures one conversation per user+employee pair */
     uniqueIndex("conversations_user_employee_unique").on(table.clerkUserId, table.employeeId),
     index("conversations_employee_idx").on(table.employeeId),
   ]
 );
 
-/**
- * Individual messages within a conversation.
- * role: 'user' | 'model' — matches Gemini and the ChatMessage type in @/server/ai.
- */
 export const conversationMessages = pgTable(
   "conversation_messages",
   {
@@ -120,6 +137,7 @@ export type EmployeeRow              = typeof employees.$inferSelect;
 export type NewEmployeeRow           = typeof employees.$inferInsert;
 export type KnowledgeSourceRow       = typeof knowledgeSources.$inferSelect;
 export type NewKnowledgeSourceRow    = typeof knowledgeSources.$inferInsert;
+export type KnowledgeChunkRow        = typeof knowledgeChunks.$inferSelect;
 export type EmployeeKnowledgeRow     = typeof employeeKnowledgeSources.$inferSelect;
 export type ConversationRow          = typeof conversations.$inferSelect;
 export type ConversationMessageRow   = typeof conversationMessages.$inferSelect;
