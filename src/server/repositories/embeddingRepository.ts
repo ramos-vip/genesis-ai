@@ -7,8 +7,27 @@
  */
 
 import { eq, inArray } from "drizzle-orm";
-import { getDb, knowledgeEmbeddings } from "../db";
+import { getDb, knowledgeEmbeddings, knowledgeChunks, knowledgeSources } from "../db";
 import { chunkRepository } from "./chunkRepository";
+
+/* ─── Retrieval type ──────────────────────────────────────────────────────── */
+
+/**
+ * A chunk embedding with its content and source metadata — used by the Retriever.
+ * The JOIN loads everything needed for cosine similarity in a single query.
+ *
+ * pgvector migration: replace the JS similarity loop with:
+ *   ORDER BY embedding <-> query_vector::vector LIMIT N
+ * The EmbeddingWithContext shape and Retriever interface stay identical.
+ */
+export interface EmbeddingWithContext {
+  chunkId:           string;
+  /** JSON-serialized float array: "[0.12,-0.44,...]" */
+  embeddingJson:     string;
+  content:           string;
+  knowledgeSourceId: string;
+  sourceName:        string;
+}
 
 export const embeddingRepository = {
   /**
@@ -40,6 +59,47 @@ export const embeddingRepository = {
           createdAt:  new Date(),
         },
       });
+  },
+
+  /**
+   * Load all embeddings for a list of knowledge source IDs.
+   * Returns one row per embedded chunk, joined with chunk content and source name.
+   *
+   * Used by TextRetriever to build the candidate pool for cosine similarity.
+   *
+   * pgvector migration:
+   *   Replace this method with a single SQL vector search:
+   *     SELECT ... FROM knowledge_embeddings
+   *     JOIN knowledge_chunks ON ...
+   *     JOIN knowledge_sources ON ...
+   *     WHERE knowledge_chunks.knowledge_source_id = ANY(sourceIds)
+   *     ORDER BY embedding <-> $query_vector LIMIT $limit
+   *   The Retriever interface and PromptBuilder are unchanged.
+   */
+  async findBySourceIds(knowledgeSourceIds: string[]): Promise<EmbeddingWithContext[]> {
+    if (knowledgeSourceIds.length === 0) return [];
+
+    const db = getDb();
+    const rows = await db
+      .select({
+        chunkId:           knowledgeEmbeddings.chunkId,
+        embeddingJson:     knowledgeEmbeddings.embedding,
+        content:           knowledgeChunks.content,
+        knowledgeSourceId: knowledgeChunks.knowledgeSourceId,
+        sourceName:        knowledgeSources.name,
+      })
+      .from(knowledgeEmbeddings)
+      .innerJoin(
+        knowledgeChunks,
+        eq(knowledgeEmbeddings.chunkId, knowledgeChunks.id)
+      )
+      .innerJoin(
+        knowledgeSources,
+        eq(knowledgeChunks.knowledgeSourceId, knowledgeSources.id)
+      )
+      .where(inArray(knowledgeChunks.knowledgeSourceId, knowledgeSourceIds));
+
+    return rows;
   },
 
   /**

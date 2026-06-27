@@ -1,12 +1,12 @@
-import { employeeKnowledgeRepository } from "@/server/repositories/employeeKnowledgeRepository";
-import type { KnowledgeSource, TextMeta, UrlMeta, PdfMeta } from "@/modules/knowledge/types";
+import { TextRetriever } from "./retriever";
+import type { RelevantChunk } from "./retriever";
 import type { ChatMessage } from "./provider";
 
 /**
  * The fully-assembled prompt handed to a provider.
  *
  * Assembly order:
- *   1. systemInstruction — system instructions + knowledge context + role
+ *   1. systemInstruction — system instructions + retrieved knowledge + role
  *   2. history           — prior conversation turns, oldest first
  *   3. message           — the current user message
  */
@@ -20,9 +20,7 @@ export interface PromptBuilderInput {
   systemInstructions: string;
   role:               string;
   name:               string;
-  /** Used to load linked knowledge sources */
   employeeId:         string;
-  /** clerkUserId — equals employee.organizationId until multi-tenancy is added */
   clerkUserId:        string;
   history:            ChatMessage[];
   message:            string;
@@ -31,20 +29,23 @@ export interface PromptBuilderInput {
 /**
  * PromptBuilder — single source of truth for prompt assembly.
  *
- * Assembles the system instruction in this order:
- *   1. Employee System Instructions (custom, or auto-generated fallback)
- *   2. Knowledge Context            (linked sources — this sprint)
+ * Assembly order:
+ *   1. Employee System Instructions
+ *   2. Retrieved Knowledge Context  (top-N semantically relevant chunks)
  *   3. Employee Role
  *
+ * Knowledge injection uses semantic retrieval (cosine similarity over
+ * stored embeddings) rather than dumping all linked source content.
+ * This keeps the context window focused on what is actually relevant.
+ *
  * Providers receive only the final BuiltPrompt.
- * Future RAG sprint: replace full content with retrieved chunks — no other file changes.
  */
 export class PromptBuilder {
   async build(input: PromptBuilderInput): Promise<BuiltPrompt> {
-    const sources = await this.loadKnowledge(input.clerkUserId, input.employeeId);
+    const chunks = await this.retrieveKnowledge(input);
 
     return {
-      systemInstruction: this.assembleSystemInstruction(input, sources),
+      systemInstruction: this.assembleSystemInstruction(input, chunks),
       history:           input.history,
       message:           input.message,
     };
@@ -53,8 +54,8 @@ export class PromptBuilder {
   /* ─── System instruction assembly ──────────────────────────────────────── */
 
   private assembleSystemInstruction(
-    input:   PromptBuilderInput,
-    sources: KnowledgeSource[]
+    input:  PromptBuilderInput,
+    chunks: RelevantChunk[]
   ): string {
     const sections: string[] = [];
 
@@ -67,10 +68,9 @@ export class PromptBuilder {
       `Keep responses concise and actionable.`
     );
 
-    // ── 2. Knowledge Context ──────────────────────────────────────────────
-    const readySources = sources.filter((s) => s.status === "ready");
-    if (readySources.length > 0) {
-      sections.push(this.buildKnowledgeContext(readySources));
+    // ── 2. Retrieved Knowledge Context ───────────────────────────────────
+    if (chunks.length > 0) {
+      sections.push(this.buildKnowledgeContext(chunks));
     }
 
     // ── 3. Employee Role ──────────────────────────────────────────────────
@@ -82,46 +82,28 @@ export class PromptBuilder {
   /* ─── Knowledge context formatter ──────────────────────────────────────── */
 
   /**
-   * Formats linked knowledge sources into the required block:
+   * Formats semantically retrieved chunks into the knowledge block.
    *
    *   === KNOWLEDGE ===
    *
-   *   Source: [Name]
-   *   Type: [Text|URL|PDF]
+   *   Source: Product FAQ  (relevance: 0.91)
    *
-   *   Content...
+   *   ...chunk content...
+   *
+   *   Source: Help Center  (relevance: 0.84)
+   *
+   *   ...chunk content...
    *
    *   ==================
    */
-  private buildKnowledgeContext(sources: KnowledgeSource[]): string {
+  private buildKnowledgeContext(chunks: RelevantChunk[]): string {
     const lines: string[] = ["=== KNOWLEDGE ==="];
 
-    for (const source of sources) {
+    for (const chunk of chunks) {
       lines.push("");
-      lines.push(`Source: ${source.name}`);
-      lines.push(`Type: ${this.typeLabel(source.type)}`);
+      lines.push(`Source: ${chunk.sourceName}  (relevance: ${chunk.score.toFixed(2)})`);
       lines.push("");
-
-      switch (source.type) {
-        case "text": {
-          const meta = source.meta as TextMeta;
-          lines.push(meta.content);
-          break;
-        }
-        case "url": {
-          const meta = source.meta as UrlMeta;
-          lines.push(`Reference: ${meta.url}`);
-          lines.push("(Content not yet fetched — web crawling is pending.)");
-          break;
-        }
-        case "pdf": {
-          const meta = source.meta as PdfMeta;
-          lines.push(`File: ${meta.fileName}`);
-          if (meta.pageCount) lines.push(`Pages: ${meta.pageCount}`);
-          lines.push("(Full text extraction is pending.)");
-          break;
-        }
-      }
+      lines.push(chunk.content);
     }
 
     lines.push("");
@@ -129,20 +111,19 @@ export class PromptBuilder {
     return lines.join("\n");
   }
 
-  private typeLabel(type: KnowledgeSource["type"]): string {
-    return { text: "Text", url: "URL", pdf: "PDF" }[type];
-  }
+  /* ─── Retrieval ─────────────────────────────────────────────────────────── */
 
-  /* ─── Data loading ──────────────────────────────────────────────────────── */
-
-  private async loadKnowledge(
-    clerkUserId: string,
-    employeeId:  string
-  ): Promise<KnowledgeSource[]> {
+  private async retrieveKnowledge(input: PromptBuilderInput): Promise<RelevantChunk[]> {
     try {
-      return await employeeKnowledgeRepository.getLinked(clerkUserId, employeeId);
+      const retriever = new TextRetriever();
+      return await retriever.retrieve(
+        input.clerkUserId,
+        input.employeeId,
+        input.message,
+        5 // top-5 chunks
+      );
     } catch {
-      // Knowledge loading must never break the chat flow
+      // Retrieval failure must never break the chat flow
       return [];
     }
   }
