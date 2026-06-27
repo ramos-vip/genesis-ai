@@ -1,5 +1,8 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { ClerkProvider } from "@clerk/nextjs";
+import Providers from "@/shared/providers";
+import { clerkAppearance } from "@/shared/lib";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -15,20 +18,25 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Project Genesis — Build Your AI Workforce in Minutes",
+  title: {
+    default:  "Project Genesis — Build Your AI Workforce in Minutes",
+    template: "%s | Project Genesis",
+  },
   description:
-    "Create AI employees for Sales, Support, SEO, Content and Operations in one platform. Ship faster, scale smarter.",
-  keywords: ["AI", "SaaS", "AI employees", "automation", "artificial intelligence"],
+    "Create AI employees for Sales, Support, SEO, Content and Operations in one platform.",
+  keywords: ["AI", "SaaS", "AI employees", "automation"],
 };
 
 export default function RootLayout({
   children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+}: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`}>
-      <body>{children}</body>
+      <body>
+        <ClerkProvider appearance={clerkAppearance}>
+          <Providers>{children}</Providers>
+        </ClerkProvider>
+      </body>
     </html>
   );
 }
