@@ -15,6 +15,13 @@
       "when": 1782572521648,
       "tag": "0001_past_speedball",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1782572968076,
+      "tag": "0002_bumpy_mister_sinister",
+      "breakpoints": true
     }
   ]
 }

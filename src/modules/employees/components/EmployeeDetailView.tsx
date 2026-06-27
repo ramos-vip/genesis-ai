@@ -117,7 +117,7 @@ export default function EmployeeDetailView({ id }: EmployeeDetailViewProps) {
       <div className="flex flex-col gap-4">
         <GeneralSection   employee={employee} />
         <BehaviorSection  employee={employee} />
-        <KnowledgeSection />
+        <KnowledgeSection employeeId={employee.id} />
         <DangerZone       employee={employee} />
       </div>
     </div>

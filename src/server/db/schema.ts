@@ -1,14 +1,4 @@
-/**
- * Database Schema — Drizzle ORM definitions for Neon PostgreSQL
- *
- * Principles:
- * - clerkUserId on every table — enforced in every WHERE clause
- * - Flat columns where sensible; JSON text for typed-but-variable metadata
- * - Future-proofed: RAG columns exist (nullable) so no schema migration is
- *   needed when the embeddings sprint lands
- */
-
-import { index, integer, pgTable, real, text, timestamp } from "drizzle-orm/pg-core";
+import { index, integer, pgTable, primaryKey, real, text, timestamp } from "drizzle-orm/pg-core";
 
 /* ─── Employees ───────────────────────────────────────────────────────────── */
 
@@ -17,21 +7,15 @@ export const employees = pgTable(
   {
     id:          text("id").primaryKey(),
     clerkUserId: text("clerk_user_id").notNull(),
-
     name:        text("name").notNull(),
     role:        text("role").notNull(),
     description: text("description").notNull().default(""),
     status:      text("status").notNull().default("active"),
-
     systemInstructions: text("system_instructions").notNull().default(""),
     toneOfVoice:        text("tone_of_voice").notNull().default("professional"),
     temperature:        real("temperature").notNull().default(0.5),
-
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-    updatedAt: timestamp("updated_at", { withTimezone: true })
-      .notNull()
-      .defaultNow()
-      .$onUpdateFn(() => new Date()),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdateFn(() => new Date()),
   },
   (table) => [
     index("employees_clerk_user_id_idx").on(table.clerkUserId),
@@ -41,40 +25,18 @@ export const employees = pgTable(
 
 /* ─── Knowledge Sources ───────────────────────────────────────────────────── */
 
-/**
- * knowledge_sources — stores source metadata for the knowledge base.
- *
- * `meta` is a JSON-encoded string whose shape is determined by `type`:
- *   text → { content: string, wordCount: number }
- *   url  → { url: string }
- *   pdf  → { fileName: string, fileSize: number, pageCount?: number }
- *
- * RAG-compatible: chunkCount is nullable — populated in the embeddings sprint.
- * Employee linkage is a future many-to-many junction table (Sprint 9+).
- */
 export const knowledgeSources = pgTable(
   "knowledge_sources",
   {
     id:          text("id").primaryKey(),
     clerkUserId: text("clerk_user_id").notNull(),
-
-    name:   text("name").notNull(),
-    /** Discriminant: 'text' | 'url' | 'pdf' */
-    type:   text("type").notNull(),
-    /** 'ready' | 'processing' | 'error' */
-    status: text("status").notNull().default("ready"),
-
-    /** JSON-encoded type-specific metadata (see JSDoc above) */
-    meta: text("meta").notNull().default("{}"),
-
-    /** Populated when content is chunked for vector search (embeddings sprint) */
-    chunkCount: integer("chunk_count"),
-
+    name:        text("name").notNull(),
+    type:        text("type").notNull(),
+    status:      text("status").notNull().default("ready"),
+    meta:        text("meta").notNull().default("{}"),
+    chunkCount:  integer("chunk_count"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-    updatedAt: timestamp("updated_at", { withTimezone: true })
-      .notNull()
-      .defaultNow()
-      .$onUpdateFn(() => new Date()),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdateFn(() => new Date()),
   },
   (table) => [
     index("knowledge_sources_clerk_user_id_idx").on(table.clerkUserId),
@@ -82,9 +44,37 @@ export const knowledgeSources = pgTable(
   ]
 );
 
+/* ─── Employee ↔ Knowledge Sources (many-to-many) ─────────────────────────── */
+
+/**
+ * Junction table linking employees to knowledge sources.
+ *
+ * clerkUserId is denormalised onto every row so that every query can enforce
+ * ownership without an extra JOIN to employees or knowledge_sources.
+ *
+ * RAG pipeline hook: when the embeddings sprint lands, the pipeline reads
+ * this table to know which chunks to retrieve for a given employee context.
+ */
+export const employeeKnowledgeSources = pgTable(
+  "employee_knowledge_sources",
+  {
+    employeeId:        text("employee_id").notNull(),
+    knowledgeSourceId: text("knowledge_source_id").notNull(),
+    /** Denormalised — both parent rows must belong to the same Clerk user */
+    clerkUserId: text("clerk_user_id").notNull(),
+    linkedAt: timestamp("linked_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.employeeId, table.knowledgeSourceId] }),
+    index("eks_employee_idx").on(table.employeeId),
+    index("eks_source_idx").on(table.knowledgeSourceId),
+  ]
+);
+
 /* ─── Type inference ──────────────────────────────────────────────────────── */
 
-export type EmployeeRow         = typeof employees.$inferSelect;
-export type NewEmployeeRow      = typeof employees.$inferInsert;
-export type KnowledgeSourceRow  = typeof knowledgeSources.$inferSelect;
-export type NewKnowledgeSourceRow = typeof knowledgeSources.$inferInsert;
+export type EmployeeRow              = typeof employees.$inferSelect;
+export type NewEmployeeRow           = typeof employees.$inferInsert;
+export type KnowledgeSourceRow       = typeof knowledgeSources.$inferSelect;
+export type NewKnowledgeSourceRow    = typeof knowledgeSources.$inferInsert;
+export type EmployeeKnowledgeRow     = typeof employeeKnowledgeSources.$inferSelect;
