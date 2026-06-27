@@ -55,15 +55,6 @@ export const knowledgeSources = pgTable(
 
 /* ─── Knowledge Chunks ────────────────────────────────────────────────────── */
 
-/**
- * Pre-computed text chunks for knowledge sources.
- *
- * Text sources are split into ~500-token chunks (≈2000 chars) with
- * ~100-token overlap (≈400 chars) at creation time.
- *
- * RAG sprint: these chunks will be embedded and stored in a vector index.
- * The chunkIndex preserves original document order for reconstruction.
- */
 export const knowledgeChunks = pgTable(
   "knowledge_chunks",
   {
@@ -71,15 +62,47 @@ export const knowledgeChunks = pgTable(
     knowledgeSourceId: text("knowledge_source_id").notNull(),
     chunkIndex:        integer("chunk_index").notNull(),
     content:           text("content").notNull(),
-    /** Estimated token count (length ÷ 4) — accurate for English prose */
     tokenCount:        integer("token_count").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
-    /** Primary lookup: all chunks for a source */
     index("chunks_source_idx").on(table.knowledgeSourceId),
-    /** Ordered retrieval: chunks for a source in document order */
     index("chunks_source_order_idx").on(table.knowledgeSourceId, table.chunkIndex),
+  ]
+);
+
+/* ─── Knowledge Embeddings ────────────────────────────────────────────────── */
+
+/**
+ * Stores one embedding vector per chunk.
+ *
+ * `chunkId` is the PRIMARY KEY — upsert on re-processing overwrites the row.
+ *
+ * Storage format:
+ *   `embedding` is a JSON-serialized float array (number[]).
+ *   This is a placeholder; a future migration will change the column type
+ *   to PostgreSQL `vector(N)` once the pgvector extension is enabled.
+ *
+ * Example migration to vector:
+ *   ALTER TABLE knowledge_embeddings
+ *     ALTER COLUMN embedding TYPE vector(768)
+ *     USING embedding::vector;
+ */
+export const knowledgeEmbeddings = pgTable(
+  "knowledge_embeddings",
+  {
+    /** One embedding per chunk — primary key enforces this constraint */
+    chunkId:    text("chunk_id").primaryKey(),
+    /** JSON float array — e.g. "[0.1,-0.3,...]" — 768 values for text-embedding-004 */
+    embedding:  text("embedding").notNull(),
+    /** Embedding model used — e.g. "text-embedding-004" */
+    model:      text("model").notNull(),
+    /** Number of dimensions in the embedding vector */
+    dimensions: integer("dimensions").notNull(),
+    createdAt:  timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("embeddings_chunk_idx").on(table.chunkId),
   ]
 );
 
@@ -138,6 +161,7 @@ export type NewEmployeeRow           = typeof employees.$inferInsert;
 export type KnowledgeSourceRow       = typeof knowledgeSources.$inferSelect;
 export type NewKnowledgeSourceRow    = typeof knowledgeSources.$inferInsert;
 export type KnowledgeChunkRow        = typeof knowledgeChunks.$inferSelect;
+export type KnowledgeEmbeddingRow    = typeof knowledgeEmbeddings.$inferSelect;
 export type EmployeeKnowledgeRow     = typeof employeeKnowledgeSources.$inferSelect;
 export type ConversationRow          = typeof conversations.$inferSelect;
 export type ConversationMessageRow   = typeof conversationMessages.$inferSelect;

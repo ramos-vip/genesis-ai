@@ -3,7 +3,9 @@
 import { auth } from "@clerk/nextjs/server";
 import { knowledgeRepository }  from "@/server/repositories/knowledgeRepository";
 import { chunkRepository }      from "@/server/repositories/chunkRepository";
+import { embeddingRepository }  from "@/server/repositories/embeddingRepository";
 import { ChunkingPipeline }     from "@/server/ai/chunker";
+import { EmbeddingService }     from "@/server/ai/embeddingService";
 import { createKnowledgeSourceSchema } from "@/server/validation/knowledge";
 import type { KnowledgeSource, CreateKnowledgeSourceDto } from "@/modules/knowledge/types";
 
@@ -35,15 +37,19 @@ export async function createKnowledgeSourceAction(
 
   const created = await knowledgeRepository.create(userId, parsed.data);
 
-  /* ── Chunking pipeline — text sources only ──────────────────────────────── */
+  /* ── Text pipeline: chunk → embed ──────────────────────────────────────── */
   if (parsed.data.type === "text") {
     try {
-      const pipeline = new ChunkingPipeline();
-      await pipeline.process(created);
+      // 1. Split into chunks and persist
+      await new ChunkingPipeline().process(created);
+
+      // 2. Generate and store embeddings for every chunk
+      await new EmbeddingService().generateForSource(created.id);
     } catch (err) {
-      // Chunking failure is non-fatal — source is usable without chunks.
-      // PromptBuilder falls back to full meta.content injection.
-      console.error("[chunking] Pipeline failed for source", created.id, err);
+      // Pipeline failure is non-fatal:
+      // - PromptBuilder still injects full meta.content as fallback
+      // - Embeddings can be regenerated later
+      console.error("[knowledge] Pipeline failed for source", created.id, err);
     }
   }
 
@@ -53,7 +59,9 @@ export async function createKnowledgeSourceAction(
 export async function deleteKnowledgeSourceAction(id: string): Promise<void> {
   const userId = await requireUserId();
 
-  // Remove chunks before deleting the source (no DB-level cascade constraint)
+  // Deletion order: embeddings → chunks → source
+  // (no DB-level cascades; must be done explicitly in this order)
+  await embeddingRepository.deleteBySourceId(id);
   await chunkRepository.deleteBySourceId(id);
 
   return knowledgeRepository.delete(userId, id);

@@ -2,7 +2,6 @@
  * Chunk Repository
  *
  * Manages pre-computed text chunks for knowledge sources.
- * saveChunks() bulk-inserts all chunks and updates the source's chunkCount atomically.
  */
 
 import { asc, eq } from "drizzle-orm";
@@ -10,10 +9,16 @@ import { getDb, knowledgeChunks, knowledgeSources } from "../db";
 
 /* ─── Types ───────────────────────────────────────────────────────────────── */
 
+/** Input shape used when inserting chunks */
 export interface ChunkData {
   chunkIndex: number;
   content:    string;
   tokenCount: number;
+}
+
+/** Full chunk record as retrieved from the database — includes the row id */
+export interface ChunkRecord extends ChunkData {
+  id: string;
 }
 
 /* ─── Helpers ─────────────────────────────────────────────────────────────── */
@@ -27,19 +32,17 @@ function generateId(): string {
 export const chunkRepository = {
   /**
    * Bulk-insert chunks and update the source's chunkCount.
-   * Replaces any existing chunks for this source first.
+   * Replaces any existing chunks for this source first (idempotent).
    */
   async saveChunks(knowledgeSourceId: string, chunks: ChunkData[]): Promise<void> {
     const db  = getDb();
     const now = new Date();
 
-    // Delete existing chunks (idempotent — safe to call on re-chunk)
     await db
       .delete(knowledgeChunks)
       .where(eq(knowledgeChunks.knowledgeSourceId, knowledgeSourceId));
 
     if (chunks.length > 0) {
-      // Bulk insert
       await db.insert(knowledgeChunks).values(
         chunks.map((c) => ({
           id:                generateId(),
@@ -52,18 +55,21 @@ export const chunkRepository = {
       );
     }
 
-    // Update chunkCount on the source row
     await db
       .update(knowledgeSources)
       .set({ chunkCount: chunks.length })
       .where(eq(knowledgeSources.id, knowledgeSourceId));
   },
 
-  /** Retrieve all chunks for a source in document order */
-  async findBySourceId(knowledgeSourceId: string): Promise<ChunkData[]> {
+  /**
+   * All chunks for a source in document order — includes `id` so callers
+   * can reference individual chunks (e.g. for embedding storage).
+   */
+  async findBySourceId(knowledgeSourceId: string): Promise<ChunkRecord[]> {
     const db   = getDb();
     const rows = await db
       .select({
+        id:         knowledgeChunks.id,
         chunkIndex: knowledgeChunks.chunkIndex,
         content:    knowledgeChunks.content,
         tokenCount: knowledgeChunks.tokenCount,
@@ -75,7 +81,7 @@ export const chunkRepository = {
     return rows;
   },
 
-  /** Hard delete — called before deleting the parent knowledge source */
+  /** Hard delete — call before deleting the parent knowledge source */
   async deleteBySourceId(knowledgeSourceId: string): Promise<void> {
     const db = getDb();
     await db
