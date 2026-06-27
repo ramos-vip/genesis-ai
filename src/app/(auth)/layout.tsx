@@ -35,9 +35,9 @@ export default async function AuthLayout({ children }: { children: ReactNode }) 
 
       <footer className="py-6 text-center text-xs text-text-muted">
         © {new Date().getFullYear()} Project Genesis.{" "}
-        <Link href="#" className="hover:text-text-secondary transition-colors">Privacy</Link>
+        <Link href={ROUTES.HOME} className="hover:text-text-secondary transition-colors">Privacy</Link>
         {" · "}
-        <Link href="#" className="hover:text-text-secondary transition-colors">Terms</Link>
+        <Link href={ROUTES.HOME} className="hover:text-text-secondary transition-colors">Terms</Link>
       </footer>
     </div>
   );

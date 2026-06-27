@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
-import PageHeader from "@/shared/components/PageHeader";
-import Button from "@/components/ui/Button";
-import EmptyState from "@/shared/components/EmptyState";
+import PageHeader  from "@/shared/components/PageHeader";
+import ComingSoon  from "@/shared/components/ComingSoon";
 import { ROUTES } from "@/shared/constants";
 
 export const metadata: Metadata = { title: "Automation" };
@@ -12,13 +11,22 @@ export default function AutomationPage() {
       <PageHeader
         title="Automation"
         description="Build workflows that run automatically."
-        breadcrumb={[{ label: "Dashboard", href: ROUTES.APP.DASHBOARD }, { label: "Automation" }]}
-        actions={<Button size="sm" href={ROUTES.APP.AUTOMATION.NEW}>New Workflow</Button>}
+        breadcrumb={[
+          { label: "Dashboard", href: ROUTES.APP.DASHBOARD },
+          { label: "Automation" },
+        ]}
       />
-      <EmptyState
-        title="No workflows yet"
-        description="Create your first automation to connect your AI employees with your tools."
-        action={{ label: "Create Workflow", href: ROUTES.APP.AUTOMATION.NEW }}
+      <ComingSoon
+        title="Workflow automation is coming"
+        description="Connect your AI employees to triggers, schedules, and external events. Build workflows that run without any human input."
+        features={[
+          "Schedule-based and webhook-triggered workflows",
+          "Connect employees to Slack, email, and CRMs",
+          "Multi-step workflows with conditional logic",
+          "Run history and failure alerts",
+          "No-code workflow builder",
+        ]}
+        eta="Coming soon"
       />
     </div>
   );

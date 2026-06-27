@@ -1,22 +1,49 @@
 import Link from "next/link";
+import { ROUTES } from "@/shared/constants";
 
 const columns = [
   {
     label: "Product",
-    links: ["Features", "Pricing", "Changelog", "Roadmap"],
+    links: [
+      { label: "Features",  href: ROUTES.HOME + "#features" },
+      { label: "Pricing",   href: ROUTES.HOME + "#pricing"  },
+      { label: "AI Employees", href: ROUTES.HOME + "#ai-employees" },
+      { label: "FAQ",       href: ROUTES.HOME + "#faq"      },
+    ],
   },
   {
     label: "Company",
-    links: ["About", "Blog", "Careers", "Press"],
+    links: [
+      { label: "About",    href: ROUTES.HOME },
+      { label: "Blog",     href: ROUTES.HOME },
+      { label: "Careers",  href: ROUTES.HOME },
+      { label: "Press",    href: ROUTES.HOME },
+    ],
   },
   {
     label: "Resources",
-    links: ["Docs", "API Reference", "Status", "Community"],
+    links: [
+      { label: "Docs",          href: ROUTES.HOME },
+      { label: "API Reference", href: ROUTES.HOME },
+      { label: "Status",        href: ROUTES.HOME },
+      { label: "Community",     href: ROUTES.HOME },
+    ],
   },
   {
     label: "Legal",
-    links: ["Privacy", "Terms", "Security", "Cookies"],
+    links: [
+      { label: "Privacy",  href: ROUTES.HOME },
+      { label: "Terms",    href: ROUTES.HOME },
+      { label: "Security", href: ROUTES.HOME },
+      { label: "Cookies",  href: ROUTES.HOME },
+    ],
   },
+];
+
+const socials = [
+  { label: "GitHub",   href: "https://github.com/ramos-vip/genesis-ai" },
+  { label: "X (Twitter)", href: "https://x.com" },
+  { label: "LinkedIn", href: "https://linkedin.com" },
 ];
 
 export default function Footer() {
@@ -26,7 +53,7 @@ export default function Footer() {
         <div className="grid grid-cols-2 gap-8 md:grid-cols-5 lg:gap-16">
           {/* Brand */}
           <div className="col-span-2 md:col-span-1">
-            <Link href="/" className="flex items-center gap-2 mb-4">
+            <Link href={ROUTES.HOME} className="flex items-center gap-2 mb-4">
               <div className="w-7 h-7 rounded-lg bg-accent flex items-center justify-center shrink-0">
                 <svg viewBox="0 0 16 16" fill="none" className="w-4 h-4 text-white">
                   <path
@@ -50,12 +77,12 @@ export default function Footer() {
               </p>
               <ul className="space-y-3">
                 {col.links.map((link) => (
-                  <li key={link}>
+                  <li key={link.label}>
                     <Link
-                      href="#"
+                      href={link.href}
                       className="text-sm text-zinc-500 hover:text-zinc-200 transition-colors duration-150"
                     >
-                      {link}
+                      {link.label}
                     </Link>
                   </li>
                 ))}
@@ -69,14 +96,16 @@ export default function Footer() {
             © {new Date().getFullYear()} Project Genesis. All rights reserved.
           </p>
           <div className="flex items-center gap-5">
-            {["Twitter", "GitHub", "LinkedIn"].map((social) => (
-              <Link
-                key={social}
-                href="#"
+            {socials.map((social) => (
+              <a
+                key={social.label}
+                href={social.href}
+                target="_blank"
+                rel="noopener noreferrer"
                 className="text-sm text-zinc-600 hover:text-zinc-300 transition-colors"
               >
-                {social}
-              </Link>
+                {social.label}
+              </a>
             ))}
           </div>
         </div>

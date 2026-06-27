@@ -1,6 +1,7 @@
 import AnimateIn from "@/components/ui/AnimateIn";
 import Button from "@/components/ui/Button";
 import SectionHeader from "@/components/ui/SectionHeader";
+import { ROUTES } from "@/shared/constants";
 
 const plans = [
   {
@@ -116,7 +117,7 @@ export default function PricingPreview() {
                   ))}
                 </ul>
 
-                <Button variant={plan.ctaVariant} href="#" className="w-full">
+                <Button variant={plan.ctaVariant} href={ROUTES.AUTH.SIGNUP} className="w-full">
                   {plan.cta}
                 </Button>
               </div>
@@ -127,7 +128,7 @@ export default function PricingPreview() {
         <AnimateIn delay={200}>
           <p className="mt-10 text-center text-sm text-zinc-500">
             All plans include a 14-day free trial. No credit card required.{" "}
-            <a href="#" className="text-accent hover:text-violet-400 transition-colors">
+            <a href={ROUTES.PRICING} className="text-accent hover:text-violet-400 transition-colors">
               See full feature comparison →
             </a>
           </p>

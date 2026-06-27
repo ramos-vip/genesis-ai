@@ -1,4 +1,5 @@
 import Button from "@/components/ui/Button";
+import { ROUTES } from "@/shared/constants";
 
 const avatarColors = [
   "bg-violet-700",
@@ -59,7 +60,7 @@ export default function Hero() {
 
         {/* CTAs */}
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-          <Button variant="primary" size="lg" href="#">
+          <Button variant="primary" size="lg" href={ROUTES.AUTH.SIGNUP}>
             Start Free
             <svg
               viewBox="0 0 16 16"
@@ -71,7 +72,7 @@ export default function Hero() {
               <path d="M3 8h10M9 4l4 4-4 4" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </Button>
-          <Button variant="secondary" size="lg" href="#">
+          <Button variant="secondary" size="lg" href={ROUTES.AUTH.SIGNUP}>
             Book Demo
           </Button>
         </div>

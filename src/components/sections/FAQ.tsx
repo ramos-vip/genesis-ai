@@ -1,6 +1,7 @@
 import AnimateIn from "@/components/ui/AnimateIn";
 import SectionHeader from "@/components/ui/SectionHeader";
 import FAQList from "@/components/ui/FAQList";
+import { ROUTES } from "@/shared/constants";
 
 const faqs = [
   {
@@ -54,7 +55,7 @@ export default function FAQ() {
         <AnimateIn delay={150}>
           <p className="mt-12 text-center text-sm text-zinc-500">
             Still have questions?{" "}
-            <a href="#" className="text-accent hover:text-violet-400 transition-colors">
+            <a href={ROUTES.AUTH.SIGNUP} className="text-accent hover:text-violet-400 transition-colors">
               Talk to our team →
             </a>
           </p>

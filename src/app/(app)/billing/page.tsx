@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import PageHeader from "@/shared/components/PageHeader";
+import PageHeader  from "@/shared/components/PageHeader";
+import ComingSoon  from "@/shared/components/ComingSoon";
 import { ROUTES } from "@/shared/constants";
 
 export const metadata: Metadata = { title: "Billing" };
@@ -10,11 +11,23 @@ export default function BillingPage() {
       <PageHeader
         title="Billing"
         description="Manage your subscription, usage, and invoices."
-        breadcrumb={[{ label: "Dashboard", href: ROUTES.APP.DASHBOARD }, { label: "Billing" }]}
+        breadcrumb={[
+          { label: "Dashboard", href: ROUTES.APP.DASHBOARD },
+          { label: "Billing" },
+        ]}
       />
-      <div className="rounded-2xl border border-border bg-surface p-8 text-center text-text-muted text-sm">
-        Billing management coming in Sprint 6
-      </div>
+      <ComingSoon
+        title="Billing management is being built"
+        description="Manage your subscription plan, view usage, and download invoices — all from one dashboard. No surprise charges, ever."
+        features={[
+          "Subscription plan management",
+          "Real-time usage and quota tracking",
+          "Invoice history and PDF downloads",
+          "Payment method management",
+          "Usage alerts and spend limits",
+        ]}
+        eta="Coming soon"
+      />
     </div>
   );
 }
