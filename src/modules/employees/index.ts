@@ -13,3 +13,4 @@ export { default as CreateEmployeeWizard } from "./components/CreateEmployeeWiza
 export { default as EmployeeCard }         from "./components/EmployeeCard";
 export { default as EmployeeGrid }         from "./components/EmployeeGrid";
 export { default as EmployeeDetailView }   from "./components/EmployeeDetailView";
+export { default as ChatView }             from "./components/ChatView";

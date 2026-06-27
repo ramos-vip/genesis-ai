@@ -2,6 +2,7 @@
 
 import Link    from "next/link";
 import Badge   from "@/components/ui/Badge";
+import Button  from "@/components/ui/Button";
 import Spinner from "@/components/ui/Spinner";
 import { useEmployee }      from "../hooks/useEmployees";
 import { ROLE_BY_ID }       from "../constants";
@@ -91,6 +92,7 @@ export default function EmployeeDetailView({ id }: EmployeeDetailViewProps) {
 
       {/* Employee header */}
       <div className="flex items-start justify-between gap-4 mb-8">
+
         <div className="min-w-0">
           <div className="flex items-center gap-3 mb-2 flex-wrap">
             <h1 className="text-2xl font-bold text-white tracking-tight truncate">
@@ -111,6 +113,20 @@ export default function EmployeeDetailView({ id }: EmployeeDetailViewProps) {
             </p>
           )}
         </div>
+
+        {/* Chat CTA */}
+        <Button
+          variant="primary"
+          size="sm"
+          href={`${ROUTES.APP.EMPLOYEES.DETAIL(employee.id)}/chat`}
+          className="shrink-0"
+        >
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-4 h-4" aria-hidden>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M2 10.5A5.5 5.5 0 0113 8c0 2.485-1.57 4.615-3.799 5.402L8 15l-1.201-1.598C4.57 12.615 3 10.485 3 8a5.48 5.48 0 01.5-2.29" />
+            <circle cx="12" cy="4" r="2.5" fill="currentColor" strokeWidth="0" />
+          </svg>
+          Test Chat
+        </Button>
       </div>
 
       {/* Sections */}
