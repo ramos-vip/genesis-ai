@@ -1,4 +1,13 @@
-import { index, integer, pgTable, primaryKey, real, text, timestamp } from "drizzle-orm/pg-core";
+import {
+  index,
+  integer,
+  pgTable,
+  primaryKey,
+  real,
+  text,
+  timestamp,
+  uniqueIndex,
+} from "drizzle-orm/pg-core";
 
 /* ─── Employees ───────────────────────────────────────────────────────────── */
 
@@ -46,21 +55,11 @@ export const knowledgeSources = pgTable(
 
 /* ─── Employee ↔ Knowledge Sources (many-to-many) ─────────────────────────── */
 
-/**
- * Junction table linking employees to knowledge sources.
- *
- * clerkUserId is denormalised onto every row so that every query can enforce
- * ownership without an extra JOIN to employees or knowledge_sources.
- *
- * RAG pipeline hook: when the embeddings sprint lands, the pipeline reads
- * this table to know which chunks to retrieve for a given employee context.
- */
 export const employeeKnowledgeSources = pgTable(
   "employee_knowledge_sources",
   {
     employeeId:        text("employee_id").notNull(),
     knowledgeSourceId: text("knowledge_source_id").notNull(),
-    /** Denormalised — both parent rows must belong to the same Clerk user */
     clerkUserId: text("clerk_user_id").notNull(),
     linkedAt: timestamp("linked_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -71,6 +70,50 @@ export const employeeKnowledgeSources = pgTable(
   ]
 );
 
+/* ─── Conversations ───────────────────────────────────────────────────────── */
+
+/**
+ * One conversation per (clerkUserId, employeeId) pair — enforced by uniqueIndex.
+ * A conversation is created automatically on first chat open and reused thereafter.
+ * Future: support multiple named conversations per employee.
+ */
+export const conversations = pgTable(
+  "conversations",
+  {
+    id:          text("id").primaryKey(),
+    clerkUserId: text("clerk_user_id").notNull(),
+    employeeId:  text("employee_id").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow()
+      .$onUpdateFn(() => new Date()),
+  },
+  (table) => [
+    /** Ensures one conversation per user+employee pair */
+    uniqueIndex("conversations_user_employee_unique").on(table.clerkUserId, table.employeeId),
+    index("conversations_employee_idx").on(table.employeeId),
+  ]
+);
+
+/**
+ * Individual messages within a conversation.
+ * role: 'user' | 'model' — matches Gemini and the ChatMessage type in @/server/ai.
+ */
+export const conversationMessages = pgTable(
+  "conversation_messages",
+  {
+    id:             text("id").primaryKey(),
+    conversationId: text("conversation_id").notNull(),
+    role:           text("role").notNull(),
+    content:        text("content").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("messages_conversation_idx").on(table.conversationId),
+  ]
+);
+
 /* ─── Type inference ──────────────────────────────────────────────────────── */
 
 export type EmployeeRow              = typeof employees.$inferSelect;
@@ -78,3 +121,5 @@ export type NewEmployeeRow           = typeof employees.$inferInsert;
 export type KnowledgeSourceRow       = typeof knowledgeSources.$inferSelect;
 export type NewKnowledgeSourceRow    = typeof knowledgeSources.$inferInsert;
 export type EmployeeKnowledgeRow     = typeof employeeKnowledgeSources.$inferSelect;
+export type ConversationRow          = typeof conversations.$inferSelect;
+export type ConversationMessageRow   = typeof conversationMessages.$inferSelect;

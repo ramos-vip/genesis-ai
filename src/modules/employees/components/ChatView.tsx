@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useRef, useState } from "react";
+import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import Link    from "next/link";
 import Spinner from "@/components/ui/Spinner";
 import { useEmployee } from "../hooks/useEmployees";
@@ -14,14 +14,12 @@ interface Message {
   content: string;
 }
 
-/* ─── Bubble ──────────────────────────────────────────────────────────────── */
+/* ─── Message bubble ──────────────────────────────────────────────────────── */
 
 function MessageBubble({ message }: { message: Message }) {
   const isUser = message.role === "user";
-
   return (
     <div className={`flex gap-3 ${isUser ? "flex-row-reverse" : "flex-row"}`}>
-      {/* Avatar */}
       <div
         className={`shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold ${
           isUser
@@ -32,8 +30,6 @@ function MessageBubble({ message }: { message: Message }) {
       >
         {isUser ? "Y" : "AI"}
       </div>
-
-      {/* Content */}
       <div
         className={`max-w-[75%] px-4 py-3 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap break-words ${
           isUser
@@ -42,7 +38,6 @@ function MessageBubble({ message }: { message: Message }) {
         }`}
       >
         {message.content || (
-          /* Streaming cursor */
           <span className="inline-flex gap-1 items-center">
             <span className="w-1.5 h-1.5 rounded-full bg-text-muted animate-bounce [animation-delay:0ms]" />
             <span className="w-1.5 h-1.5 rounded-full bg-text-muted animate-bounce [animation-delay:150ms]" />
@@ -61,77 +56,86 @@ interface ChatViewProps {
 }
 
 export default function ChatView({ employeeId }: ChatViewProps) {
-  const { data: employee, isLoading } = useEmployee(employeeId);
+  const { data: employee, isLoading: loadingEmployee } = useEmployee(employeeId);
 
-  const [messages,    setMessages]   = useState<Message[]>([]);
-  const [input,       setInput]      = useState("");
-  const [isStreaming, setIsStreaming] = useState(false);
-  const [error,       setError]      = useState<string | null>(null);
+  const [conversationId, setConversationId] = useState<string | null>(null);
+  const [messages,       setMessages]       = useState<Message[]>([]);
+  const [input,          setInput]          = useState("");
+  const [isStreaming,    setIsStreaming]     = useState(false);
+  const [loadingConv,    setLoadingConv]    = useState(true);
+  const [error,          setError]          = useState<string | null>(null);
 
-  const scrollRef  = useRef<HTMLDivElement>(null);
-  const inputRef   = useRef<HTMLTextAreaElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const inputRef  = useRef<HTMLTextAreaElement>(null);
 
-  /* Auto-scroll to bottom on new message */
+  /* ── Auto-scroll on new content ── */
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages]);
 
-  /* Welcome message once employee loads */
+  /* ── Load conversation from server on mount ── */
+  const loadConversation = useCallback(async () => {
+    setLoadingConv(true);
+    try {
+      const res = await fetch(`/api/chat/${employeeId}`);
+      if (!res.ok) throw new Error(`Failed to load conversation (${res.status})`);
+
+      const data: { conversationId: string; messages: Message[] } = await res.json();
+      setConversationId(data.conversationId);
+
+      if (data.messages.length > 0) {
+        setMessages(data.messages);
+      }
+      // If empty, welcome message is added once employee data arrives (below)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load conversation.");
+    } finally {
+      setLoadingConv(false);
+    }
+  }, [employeeId]);
+
+  useEffect(() => { loadConversation(); }, [loadConversation]);
+
+  /* ── Show welcome message when conversation is empty ── */
   useEffect(() => {
-    if (employee && messages.length === 0) {
+    if (employee && !loadingConv && messages.length === 0) {
       setMessages([{
         role:    "model",
         content: `Hi! I'm ${employee.name}. How can I help you today?`,
       }]);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [employee?.id]);
+  }, [employee?.id, loadingConv]);
 
+  /* ── Send message ── */
   async function send(userText: string) {
-    if (!userText.trim() || isStreaming) return;
-
+    if (!userText.trim() || isStreaming || !conversationId) return;
     setError(null);
-    const userMessage: Message = { role: "user", content: userText.trim() };
 
-    /* History to send = all messages so far (excluding the welcome which has no history) */
-    const history = messages.slice(1); // skip the welcome message sent by the client
-
-    setMessages((prev) => [...prev, userMessage]);
+    setMessages((prev) => [...prev, { role: "user", content: userText.trim() }]);
     setInput("");
-
-    /* Placeholder for the streaming response */
-    setMessages((prev) => [...prev, { role: "model", content: "" }]);
+    setMessages((prev) => [...prev, { role: "model", content: "" }]); // streaming placeholder
     setIsStreaming(true);
 
     try {
       const response = await fetch(`/api/chat/${employeeId}`, {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify({
-          history: [...history, userMessage].map((m) => ({
-            role:    m.role,
-            content: m.content,
-          })),
-          message: userText.trim(),
-        }),
+        body:    JSON.stringify({ conversationId, message: userText.trim() }),
       });
 
       if (!response.ok) {
-        const errText = await response.text();
-        throw new Error(errText || `HTTP ${response.status}`);
+        throw new Error((await response.text()) || `HTTP ${response.status}`);
       }
 
-      const reader  = response.body!.getReader();
-      const decoder = new TextDecoder();
+      const reader      = response.body!.getReader();
+      const decoder     = new TextDecoder();
       let   accumulated = "";
 
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
-
         accumulated += decoder.decode(value, { stream: true });
-
-        /* Update the last (placeholder) message with streamed text */
         setMessages((prev) => {
           const updated = [...prev];
           updated[updated.length - 1] = { role: "model", content: accumulated };
@@ -141,8 +145,7 @@ export default function ChatView({ employeeId }: ChatViewProps) {
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Something went wrong.";
       setError(msg);
-      /* Remove the empty placeholder */
-      setMessages((prev) => prev.slice(0, -1));
+      setMessages((prev) => prev.slice(0, -1)); // remove empty placeholder
     } finally {
       setIsStreaming(false);
       inputRef.current?.focus();
@@ -155,17 +158,14 @@ export default function ChatView({ employeeId }: ChatViewProps) {
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      send(input);
-    }
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(input); }
   }
 
-  const roleData    = employee ? ROLE_BY_ID[employee.role] : null;
-  const detailPath  = ROUTES.APP.EMPLOYEES.DETAIL(employeeId);
+  const roleData   = employee ? ROLE_BY_ID[employee.role] : null;
+  const detailPath = ROUTES.APP.EMPLOYEES.DETAIL(employeeId);
+  const isLoading  = loadingEmployee || loadingConv;
 
   return (
-    /* Full-bleed chat: cancel parent padding, fill viewport below topbar */
     <div
       className="flex flex-col -mx-6 lg:-mx-8 -mb-6 lg:-mb-8 overflow-hidden bg-background"
       style={{ height: "calc(100dvh - 4rem)" }}
@@ -182,9 +182,7 @@ export default function ChatView({ employeeId }: ChatViewProps) {
           </svg>
           Back
         </Link>
-
         <div className="h-5 w-px bg-border" aria-hidden />
-
         {isLoading ? (
           <Spinner size="xs" color="default" />
         ) : employee ? (
@@ -198,12 +196,11 @@ export default function ChatView({ employeeId }: ChatViewProps) {
             </div>
           </div>
         ) : null}
-
         <div className="ml-auto flex items-center gap-2">
           <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-accent/10 text-accent border border-accent/20">
             Gemini
           </span>
-          <span className="text-xs text-text-muted">Session not saved</span>
+          <span className="text-xs text-text-muted">Conversation saved</span>
         </div>
       </div>
 
@@ -214,9 +211,13 @@ export default function ChatView({ employeeId }: ChatViewProps) {
         aria-live="polite"
         aria-label="Chat messages"
       >
-        {messages.map((msg, i) => (
-          <MessageBubble key={i} message={msg} />
-        ))}
+        {isLoading ? (
+          <div className="flex items-center justify-center flex-1">
+            <Spinner size="md" color="accent" label="Loading conversation…" />
+          </div>
+        ) : (
+          messages.map((msg, i) => <MessageBubble key={i} message={msg} />)
+        )}
 
         {error && (
           <div className="mx-auto px-4 py-3 rounded-xl bg-danger-bg border border-danger-border text-sm text-danger max-w-sm text-center">
@@ -243,14 +244,12 @@ export default function ChatView({ employeeId }: ChatViewProps) {
               "border-border hover:border-border-hover focus:border-border-focus focus:ring-2 focus:ring-accent/20",
               "disabled:opacity-50 disabled:cursor-not-allowed",
             ].join(" ")}
-            style={{ height: "auto" }}
             onInput={(e) => {
               const el = e.currentTarget;
               el.style.height = "auto";
               el.style.height = `${Math.min(el.scrollHeight, 128)}px`;
             }}
           />
-
           <button
             type="submit"
             disabled={!input.trim() || isStreaming || isLoading}
@@ -266,9 +265,8 @@ export default function ChatView({ employeeId }: ChatViewProps) {
             )}
           </button>
         </form>
-
         <p className="mt-2 text-center text-[10px] text-text-muted">
-          Responses are generated by Gemini and may be inaccurate. Not saved.
+          Conversation is saved. Responses are generated by Gemini and may be inaccurate.
         </p>
       </div>
     </div>
