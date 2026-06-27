@@ -8,7 +8,7 @@ import AIShowcase          from "@/components/sections/AIShowcase";
 import KnowledgeExperience from "@/components/sections/KnowledgeExperience";
 import HowItWorks          from "@/components/sections/HowItWorks";
 import Testimonials    from "@/components/sections/Testimonials";
-import PricingPreview  from "@/components/sections/PricingPreview";
+import PricingSection  from "@/components/sections/PricingSection";
 import FAQ             from "@/components/sections/FAQ";
 
 export default function Home() {
@@ -29,7 +29,7 @@ export default function Home() {
         {/* How it works, social proof, pricing, FAQ */}
         <HowItWorks />
         <Testimonials />
-        <PricingPreview />
+        <PricingSection />
         <FAQ />
       </main>
       <Footer />
