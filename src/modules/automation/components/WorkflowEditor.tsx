@@ -10,10 +10,15 @@ import { NODE_CONFIG } from "../types";
 import WorkflowCanvas   from "./WorkflowCanvas";
 import NodePalette      from "./NodePalette";
 import PropertiesPanel  from "./PropertiesPanel";
+import ExecutionPanel   from "./ExecutionPanel";
+import RunHistory       from "./RunHistory";
+import { WorkflowRuntime } from "../runtime/engine";
+import type { WorkflowRun, NodeResult } from "../runtime/types";
 
 /* ─── Persistence ─────────────────────────────────────────────────────────── */
 
-const STORAGE_KEY = "genesis:workflows:v1";
+const STORAGE_KEY    = "genesis:workflows:v1";
+const RUNS_KEY       = "genesis:workflow-runs:v1";
 
 function loadWorkflows(): Workflow[] {
   if (typeof window === "undefined") return EXAMPLE_WORKFLOWS;
@@ -25,6 +30,22 @@ function loadWorkflows(): Workflow[] {
 
 function saveWorkflows(workflows: Workflow[]) {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(workflows)); } catch { /* quota */ }
+}
+
+function loadRuns(workflowId: string): WorkflowRun[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw  = localStorage.getItem(`${RUNS_KEY}:${workflowId}`);
+    return raw ? (JSON.parse(raw) as WorkflowRun[]) : [];
+  } catch { return []; }
+}
+
+function saveRun(run: WorkflowRun) {
+  try {
+    const existing = loadRuns(run.workflowId);
+    const updated  = [run, ...existing].slice(0, 20); // keep last 20
+    localStorage.setItem(`${RUNS_KEY}:${run.workflowId}`, JSON.stringify(updated));
+  } catch { /* quota */ }
 }
 
 function genId(): string {
@@ -113,11 +134,12 @@ function WorkflowList({ workflows, onOpen, onNew }: {
 
 /* ─── Toolbar ─────────────────────────────────────────────────────────────── */
 
-function EditorToolbar({ workflow, zoom, onZoomIn, onZoomOut, onFit, onSave, onClose, onStatusChange }: {
+function EditorToolbar({ workflow, zoom, onZoomIn, onZoomOut, onFit, onSave, onClose, onStatusChange, onRun, isRunning }: {
   workflow: Workflow; zoom: number;
   onZoomIn: () => void; onZoomOut: () => void; onFit: () => void;
   onSave:   () => void; onClose:   () => void;
   onStatusChange: (s: WorkflowStatus) => void;
+  onRun:    () => void; isRunning: boolean;
 }) {
   return (
     <div className="h-12 shrink-0 flex items-center justify-between px-4 border-b border-border bg-surface gap-4">
@@ -158,6 +180,17 @@ function EditorToolbar({ workflow, zoom, onZoomIn, onZoomOut, onFit, onSave, onC
           <option value="paused">Paused</option>
         </select>
         <button
+          onClick={onRun}
+          disabled={isRunning || workflow.nodes.length === 0}
+          className="h-8 px-4 rounded-xl border border-emerald-500/40 bg-emerald-600/15 text-emerald-300 text-xs font-semibold hover:bg-emerald-600/25 transition-all disabled:opacity-50 disabled:cursor-wait flex items-center gap-1.5"
+        >
+          {isRunning ? (
+            <><svg className="animate-spin w-3 h-3" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden><circle cx="6" cy="6" r="4.5" strokeOpacity="0.2"/><path d="M10.5 6A4.5 4.5 0 006 1.5" strokeLinecap="round"/></svg>Running</>
+          ) : (
+            <><svg viewBox="0 0 10 10" fill="currentColor" className="w-2.5 h-2.5" aria-hidden><path d="M2 1.5l7 3.5-7 3.5V1.5Z"/></svg>Run</>
+          )}
+        </button>
+        <button
           onClick={onSave}
           className="h-8 px-4 rounded-xl bg-accent text-white text-xs font-semibold hover:bg-accent-hover transition-all shadow-[0_0_12px_rgba(124,58,237,0.2)]"
         >
@@ -178,7 +211,51 @@ export default function WorkflowEditor() {
   const [zoom,          setZoom]          = useState(1);
   const [pan,           setPan]           = useState({ x: 60, y: 60 });
 
+  // Runtime state
+  const [isRunning,     setIsRunning]     = useState(false);
+  const [currentRun,    setCurrentRun]    = useState<WorkflowRun | null>(null);
+  const [currentNodeId, setCurrentNodeId] = useState<string | null>(null);
+  const [showPanel,     setShowPanel]     = useState(false);
+  const [runs,          setRuns]          = useState<WorkflowRun[]>([]);
+  const [leftTab,       setLeftTab]       = useState<"palette" | "history">("palette");
+
   const editingWorkflow = workflows.find(w => w.id === editingId) ?? null;
+
+  function handleRun() {
+    if (!editingWorkflow || isRunning) return;
+    const wfRuns = loadRuns(editingWorkflow.id);
+    setRuns(wfRuns);
+
+    // Initialise a skeleton run immediately so the panel appears
+    const skeletonRun: WorkflowRun = {
+      id: genId(), workflowId: editingWorkflow.id, workflowName: editingWorkflow.name,
+      status: "running", startedAt: new Date().toISOString(), trigger: {},
+      results: [], logs: [], simulatedAt: true,
+    };
+    setCurrentRun(skeletonRun);
+    setShowPanel(true);
+    setIsRunning(true);
+    setCurrentNodeId(null);
+
+    const runtime = new WorkflowRuntime(editingWorkflow, {
+      onNodeStart:    (nodeId) => setCurrentNodeId(nodeId),
+      onNodeComplete: (result: NodeResult) => {
+        setCurrentRun(prev => prev ? { ...prev, results: [...prev.results, result] } : prev);
+      },
+      onRunComplete:  (run) => {
+        setCurrentRun(run);
+        setIsRunning(false);
+        setCurrentNodeId(null);
+        saveRun(run);
+        setRuns(prev => [run, ...prev.filter(r => r.id !== run.id)]);
+        if (run.status === "completed") toast.success("Workflow completed.", `${run.results.length} steps executed in ${run.durationMs}ms.`);
+        else toast.error("Workflow failed.", run.logs[run.logs.length - 1] ?? "");
+      },
+    });
+
+    // Fire and forget — callbacks stream updates
+    runtime.execute().catch(() => setIsRunning(false));
+  }
 
   function updateWorkflow(updated: Workflow) {
     const now = new Date().toISOString();
@@ -285,14 +362,43 @@ export default function WorkflowEditor() {
           onZoomOut={() => setZoom(z => Math.max(0.3, z - 0.1))}
           onFit={handleFit}
           onSave={handleSave}
-          onClose={() => { setEditingId(null); setSelectedNodeId(null); }}
+          onClose={() => { setEditingId(null); setSelectedNodeId(null); setShowPanel(false); setCurrentRun(null); }}
           onStatusChange={status => updateWorkflow({ ...editingWorkflow, status })}
+          onRun={handleRun}
+          isRunning={isRunning}
         />
 
         {/* Three-column layout */}
         <div className="flex flex-1 overflow-hidden">
-          {/* Node palette */}
-          <NodePalette onAddNode={handleAddNode} />
+          {/* Node palette + Run history */}
+          <aside className="w-52 shrink-0 border-r border-border bg-surface flex flex-col">
+            {/* Tab switcher */}
+            <div className="flex border-b border-border shrink-0">
+              {(["palette", "history"] as const).map(tab => (
+                <button
+                  key={tab}
+                  onClick={() => setLeftTab(tab)}
+                  className={[
+                    "flex-1 py-2 text-[10px] font-semibold capitalize transition-colors",
+                    leftTab === tab ? "text-white bg-surface-elevated" : "text-text-muted hover:text-text-secondary",
+                  ].join(" ")}
+                >
+                  {tab === "palette" ? "Nodes" : `History${runs.length ? ` (${runs.length})` : ""}`}
+                </button>
+              ))}
+            </div>
+            {leftTab === "palette" ? (
+              <div className="flex-1 overflow-y-auto"><NodePalette onAddNode={handleAddNode} /></div>
+            ) : (
+              <div className="flex-1 overflow-y-auto">
+                <RunHistory
+                  runs={runs}
+                  onSelect={run => { setCurrentRun(run); setShowPanel(true); }}
+                  onClear={() => { setRuns([]); try { localStorage.removeItem(`${RUNS_KEY}:${editingWorkflow.id}`); } catch { /**/ } }}
+                />
+              </div>
+            )}
+          </aside>
 
           {/* Canvas */}
           <WorkflowCanvas
@@ -318,15 +424,27 @@ export default function WorkflowEditor() {
           />
         </div>
 
-        {/* Mini-map placeholder */}
-        <div className="absolute bottom-3 right-60 w-36 h-24 rounded-xl border border-border bg-surface/80 backdrop-blur-sm pointer-events-none">
-          <div className="p-2">
-            <p className="text-[8px] font-semibold text-text-muted uppercase tracking-wider mb-1">Mini-map</p>
-            <div className="w-full h-16 rounded bg-surface-elevated flex items-center justify-center">
-              <p className="text-[8px] text-text-muted">Overview preview</p>
+        {/* Execution panel (bottom drawer) */}
+        {showPanel && (
+          <ExecutionPanel
+            run={currentRun}
+            currentNodeId={currentNodeId}
+            isRunning={isRunning}
+            onClose={() => setShowPanel(false)}
+          />
+        )}
+
+        {/* Mini-map placeholder (only when panel is not open) */}
+        {!showPanel && (
+          <div className="absolute bottom-3 right-60 w-36 h-24 rounded-xl border border-border bg-surface/80 backdrop-blur-sm pointer-events-none">
+            <div className="p-2">
+              <p className="text-[8px] font-semibold text-text-muted uppercase tracking-wider mb-1">Mini-map</p>
+              <div className="w-full h-16 rounded bg-surface-elevated flex items-center justify-center">
+                <p className="text-[8px] text-text-muted">Overview preview</p>
+              </div>
             </div>
           </div>
-        </div>
+        )}
       </div>
     );
   }
