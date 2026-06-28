@@ -62,6 +62,13 @@ function MarketIcon({ className }: { className?: string }) {
     </svg>
   );
 }
+function PlugIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" className={className} aria-hidden>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M7 4v4M13 4v4M5 8h10l-1 8H6L5 8zM8 16v2M12 16v2" />
+    </svg>
+  );
+}
 function CreditCardIcon({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" className={className} aria-hidden>
@@ -89,8 +96,9 @@ const navSections: NavSection[] = [
     items: [
       { label: "Employees",    href: ROUTES.APP.EMPLOYEES.ROOT,  icon: UsersIcon },
       { label: "Marketplace",  href: ROUTES.APP.MARKETPLACE,     icon: MarketIcon },
-      { label: "Knowledge",    href: ROUTES.APP.KNOWLEDGE.ROOT,  icon: BookIcon },
+      { label: "Knowledge",     href: ROUTES.APP.KNOWLEDGE.ROOT,  icon: BookIcon },
       { label: "Automation",   href: ROUTES.APP.AUTOMATION.ROOT, icon: BoltIcon },
+      { label: "Integrations", href: ROUTES.APP.INTEGRATIONS,    icon: PlugIcon },
     ],
   },
   {

@@ -39,8 +39,9 @@ export const ROUTES = {
       NEW:     "/automation/new",
       DETAIL:  (id: string) => `/automation/${id}`,
     },
-    ANALYTICS:   "/analytics",
-    MARKETPLACE: "/marketplace",
+    ANALYTICS:    "/analytics",
+    MARKETPLACE:  "/marketplace",
+    INTEGRATIONS: "/integrations",
     BILLING: {
       ROOT:     "/billing",
       PLANS:    "/billing/plans",
