@@ -1,12 +1,12 @@
 import type { OverviewMetrics, TimeSeriesPoint } from "@/modules/analytics";
 import type { Employee } from "@/modules/employees";
-import type { WorkflowRun } from "@/modules/automation";
+import type { Workflow } from "@/modules/automation";
 
 export interface DashboardData {
   metrics:    OverviewMetrics;
   taskChart:  TimeSeriesPoint[];
   topEmployees: Pick<Employee, "id" | "name" | "role" | "stats">[];
-  recentRuns: WorkflowRun[];
+  recentRuns: Workflow[];
 }
 
 export interface ActivityItem {
