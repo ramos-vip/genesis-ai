@@ -1,4 +1,4 @@
-import type { ID, ISODate, Timestamps } from "@/shared/types";
+import type { ID, ISODate, PaginationMeta, Timestamps } from "@/shared/types";
 import type { Permission, SystemRole } from "../permissions";
 
 /* ─── Organization ────────────────────────────────────────────────────────── */
@@ -62,6 +62,19 @@ export type UpdateMemberDto = Partial<{
   status:       MemberStatus;
   title:        string;
 }>;
+
+export interface MemberListParams {
+  page?:    number;
+  perPage?: number;
+  search?:  string;
+  role?:    SystemRole | "all";
+  status?:  MemberStatus | "all";
+}
+
+export interface MemberListResult {
+  items: OrganizationMember[];
+  meta:  PaginationMeta;
+}
 
 /* ─── Custom Roles ────────────────────────────────────────────────────────── */
 
