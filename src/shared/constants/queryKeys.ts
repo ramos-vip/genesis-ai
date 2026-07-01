@@ -8,13 +8,13 @@
  */
 
 export const queryKeys = {
-  // ── Auth ────────────────────────────────────────────────────────
+  // ── Auth ───────────────────────────────────────────────
   auth: {
     session: ()  => ["auth", "session"] as const,
     user:    ()  => ["auth", "user"]    as const,
   },
 
-  // ── Employees ───────────────────────────────────────────────────
+  // ── Employees ─────────────────────────────────────────
   employees: {
     all:    ()         => ["employees"]              as const,
     list:   (params?:  object) => ["employees", "list", params] as const,
@@ -22,14 +22,14 @@ export const queryKeys = {
     stats:  ()         => ["employees", "stats"]     as const,
   },
 
-  // ── Knowledge ───────────────────────────────────────────────────
+  // ── Knowledge ─────────────────────────────────────────
   knowledge: {
     all:    ()           => ["knowledge"]               as const,
     list:   (params?: object) => ["knowledge", "list", params] as const,
     detail: (id: string)  => ["knowledge", id]          as const,
   },
 
-  // ── Automation ──────────────────────────────────────────────────
+  // ── Automation ───────────────────────────────────────
   automation: {
     all:    ()           => ["automation"]                  as const,
     list:   (params?: object) => ["automation", "list", params] as const,
@@ -37,14 +37,14 @@ export const queryKeys = {
     runs:   (id: string)  => ["automation", id, "runs"]     as const,
   },
 
-  // ── Analytics ───────────────────────────────────────────────────
+  // ── Analytics ─────────────────────────────────────────
   analytics: {
     overview:    (period?: string) => ["analytics", "overview", period] as const,
     employees:   (id: string)      => ["analytics", "employees", id]    as const,
     usage:       (period?: string) => ["analytics", "usage", period]    as const,
   },
 
-  // ── Billing ─────────────────────────────────────────────────────
+  // ── Billing ───────────────────────────────────────────
   billing: {
     subscription: () => ["billing", "subscription"] as const,
     invoices:     () => ["billing", "invoices"]     as const,
@@ -52,7 +52,19 @@ export const queryKeys = {
     usage:        () => ["billing", "usage"]        as const,
   },
 
-  // ── Settings ────────────────────────────────────────────────────
+  // ── Organizations (EPIC-009) ──────────────────────────────────
+  organizations: {
+    all:         ()                          => ["organizations"]                          as const,
+    list:        ()                          => ["organizations", "list"]                  as const,
+    detail:      (id: string)                => ["organizations", id]                      as const,
+    permissions: (id: string)                => ["organizations", id, "permissions"]       as const,
+    members:     (id: string, params?: object) => ["organizations", id, "members", params]  as const,
+    invitations: (id: string)                => ["organizations", id, "invitations"]       as const,
+    activity:    (id: string)                => ["organizations", id, "activity"]          as const,
+    audit:       (id: string)                => ["organizations", id, "audit"]             as const,
+  },
+
+  // ── Settings ───────────────────────────────────────────
   settings: {
     profile:      () => ["settings", "profile"]      as const,
     organization: () => ["settings", "organization"] as const,
