@@ -6,12 +6,12 @@
  */
 
 export const ROUTES = {
-  // ── Public ────────────────────────────────────────────────────
+  // ── Public ─────────────────────────────────────────
   HOME:    "/",
   PRICING: "/#pricing",
   DOCS:    "/docs",
 
-  // ── Auth ──────────────────────────────────────────────────────
+  // ── Auth ───────────────────────────────────────────
   AUTH: {
     LOGIN:          "/login",
     SIGNUP:         "/signup",
@@ -20,9 +20,18 @@ export const ROUTES = {
     CALLBACK:       "/auth/callback",
   },
 
-  // ── App (protected) ───────────────────────────────────────────
+  // ── App (protected) ──────────────────────────────────
   APP: {
     DASHBOARD:  "/dashboard",
+    ORGANIZATION: {
+      ROOT:     "/organization",
+      MEMBERS:  "/organization/members",
+      TEAMS:    "/organization/teams",
+      ROLES:    "/organization/roles",
+      SETTINGS: "/organization/settings",
+      ACTIVITY: "/organization/activity",
+      AUDIT:    "/organization/audit",
+    },
     EMPLOYEES: {
       ROOT:    "/employees",
       NEW:     "/employees/new",
@@ -57,7 +66,7 @@ export const ROUTES = {
     },
   },
 
-  // ── Admin ─────────────────────────────────────────────────────
+  // ── Admin ──────────────────────────────────────────
   ADMIN: {
     ROOT:  "/admin",
     USERS: "/admin/users",
